@@ -55,7 +55,7 @@ namespace WinGetMGui
             var version = GetType().Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
             MessageBox.Show(
                 this,
-                $"WinGetMGui {version}\nMinimal GUI wrapper for winget\n\nCopyright (C) 2026 Maxim Chirikov\nLicensed under GPL-3.0-or-later\n\nThis program comes with ABSOLUTELY NO WARRANTY.\nThis is free software, and you are welcome to redistribute it\nunder certain conditions.",
+                $"WinGet Minimal GUI {version}\n\nCopyright (C) 2026 Maxim Chirikov\nLicensed under GPL-3.0-or-later\n\nThis program comes with ABSOLUTELY NO WARRANTY.\nThis is free software, and you are welcome to redistribute it\nunder certain conditions.",
                 "About WinGetMGui",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
