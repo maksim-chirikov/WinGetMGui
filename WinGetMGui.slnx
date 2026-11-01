@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/WinGetMGui.Tests/WinGetMGui.Tests.csproj" />
+  </Folder>
+  <Project Path="WinGetMGui.csproj" />
+</Solution>

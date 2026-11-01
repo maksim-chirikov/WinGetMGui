@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>WinGetMGui</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Version>2026.11.1.0</Version>
+    <Authors>Maxim Chirikov</Authors>
+    <Copyright>Copyright (C) 2026 Maxim Chirikov. Licensed under GPL-3.0-or-later.</Copyright>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="app.ico" LogicalName="WinGetMGui.app.ico" />
+    <InternalsVisibleTo Include="WinGetMGui.Tests" />
+  </ItemGroup>
+
+</Project>
