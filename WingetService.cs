@@ -127,7 +127,6 @@ namespace WinGetMGui
 
         private static async Task RunVisibleAsync(IReadOnlyList<string> arguments)
         {
-            string command = string.Join(' ', arguments);
             var processStartInfo = new ProcessStartInfo
             {
                 FileName = WingetPath,
@@ -137,13 +136,11 @@ namespace WinGetMGui
 
             foreach (string argument in arguments)
                 processStartInfo.ArgumentList.Add(argument);
+            processStartInfo.ArgumentList.Add("--wait");
 
             using var process = new Process { StartInfo = processStartInfo };
             process.Start();
             await process.WaitForExitAsync();
-
-            if (process.ExitCode != 0)
-                throw new WingetException($"Winget command failed with exit code {process.ExitCode}: {command}");
         }
 
         private static Process CreateProcess(IReadOnlyList<string> arguments)
