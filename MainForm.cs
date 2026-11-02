@@ -18,6 +18,10 @@ namespace WinGetMGui
         private ToolStripButton btnSearch = default!;
         private ToolStripButton btnAction = default!;
         private ToolStripButton btnRefresh = default!;
+        private ToolStripDropDownButton btnScope = default!;
+        private ToolStripMenuItem scopeDefaultItem = default!;
+        private ToolStripMenuItem scopeUserItem = default!;
+        private ToolStripMenuItem scopeMachineItem = default!;
         private List<PackageInfo> _installedPackages = new();
         private List<PackageInfo> _catalogPackages = new();
         private IgnoredPackagesStore _ignored = default!;
@@ -103,6 +107,17 @@ namespace WinGetMGui
             btnSearch = new ToolStripButton("Search");
             btnSearch.Click += BtnSearch_Click;
             toolStrip.Items.Add(btnSearch);
+
+            // Install scope (Install tab only): check marks show the active selection
+            btnScope = new ToolStripDropDownButton("Scope");
+            scopeDefaultItem = new ToolStripMenuItem("Default", null, ScopeItem_Click) { Checked = true };
+            scopeUserItem = new ToolStripMenuItem("User", null, ScopeItem_Click);
+            scopeMachineItem = new ToolStripMenuItem("Machine", null, ScopeItem_Click);
+            btnScope.DropDownItems.Add(scopeDefaultItem);
+            btnScope.DropDownItems.Add(scopeUserItem);
+            btnScope.DropDownItems.Add(scopeMachineItem);
+            btnScope.Visible = false;
+            toolStrip.Items.Add(btnScope);
 
             // Action Button (verb follows the selected tab)
             btnAction = new ToolStripButton();
@@ -199,6 +214,7 @@ namespace WinGetMGui
 
             txtSearch.Enabled = idle;
             btnSearch.Enabled = idle && installMode;
+            btnScope.Visible = installMode;
             btnRefresh.Enabled = idle;
         }
 
@@ -357,6 +373,18 @@ namespace WinGetMGui
             await TryStart(verb);
         }
 
+        private PackageScope SelectedScope =>
+            scopeUserItem.Checked ? PackageScope.User :
+            scopeMachineItem.Checked ? PackageScope.Machine :
+            PackageScope.Default;
+
+        private void ScopeItem_Click(object? sender, EventArgs e)
+        {
+            scopeDefaultItem.Checked = sender == scopeDefaultItem;
+            scopeUserItem.Checked = sender == scopeUserItem;
+            scopeMachineItem.Checked = sender == scopeMachineItem;
+        }
+
         private async Task TryStart(PackageVerb verb)
         {
             if (_busy)
@@ -383,7 +411,7 @@ namespace WinGetMGui
                 switch (verb)
                 {
                     case PackageVerb.Install:
-                        await wingetService.InstallPackageAsync(package.Id);
+                        await wingetService.InstallPackageAsync(package.Id, SelectedScope);
                         break;
                     case PackageVerb.Uninstall:
                         await wingetService.UninstallPackageAsync(package.Id);

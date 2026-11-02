@@ -8,6 +8,24 @@ using System.Text;
 
 namespace WinGetMGui
 {
+    public enum PackageScope
+    {
+        Default,
+        User,
+        Machine
+    }
+
+    public static class PackageScopeArgument
+    {
+        public static string? Flag(this PackageScope scope) => scope switch
+        {
+            PackageScope.Default => null,
+            PackageScope.User => "user",
+            PackageScope.Machine => "machine",
+            _ => throw new ArgumentOutOfRangeException(nameof(scope), scope, null),
+        };
+    }
+
     public class WingetService
     {
         private const string WingetPath = "winget";
@@ -25,10 +43,19 @@ namespace WinGetMGui
             return ParseWingetSearchOutput(output);
         }
 
-        public async Task InstallPackageAsync(string packageId)
+        public async Task InstallPackageAsync(string packageId, PackageScope scope)
         {
             ValidateArgument(packageId, nameof(packageId));
-            await RunVisibleAsync(await WithOutputLocaleAsync(["install", "--id", packageId, "--silent", "--disable-interactivity", "--accept-source-agreements", "--accept-package-agreements", "--force"]));
+            await RunVisibleAsync(await WithOutputLocaleAsync(BuildInstallArguments(packageId, scope)));
+        }
+
+        internal static List<string> BuildInstallArguments(string packageId, PackageScope scope)
+        {
+            var arguments = new List<string> { "install", "--id", packageId };
+            if (scope.Flag() is string scopeFlag)
+                arguments.AddRange(["--scope", scopeFlag]);
+            arguments.AddRange(["--silent", "--disable-interactivity", "--accept-source-agreements", "--accept-package-agreements", "--force"]);
+            return arguments;
         }
 
         public async Task UninstallPackageAsync(string packageId)
