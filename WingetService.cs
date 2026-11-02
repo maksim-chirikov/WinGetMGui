@@ -29,6 +29,8 @@ namespace WinGetMGui
     public class WingetService
     {
         private const string WingetPath = "winget";
+        internal const int NoPackagesFoundExitCode = unchecked((int)0x8A150014);
+        internal static bool IsNoPackagesFoundExitCode(int exitCode) => exitCode == NoPackagesFoundExitCode;
 
         public async Task<List<PackageInfo>> GetInstalledPackagesAsync()
         {
@@ -205,8 +207,10 @@ namespace WinGetMGui
 
             process.WaitForExit();
 
-            if (process.ExitCode != 0)
-                throw new WingetException($"Winget command failed with exit code {process.ExitCode}: {command}");
+            // winget exits with this HRESULT when nothing matches the query ("No package found matching input criteria."),
+            // which is a valid empty result, not a failure (verified against winget 1.29.380, 2026-11-03).
+            if (process.ExitCode != 0 && !IsNoPackagesFoundExitCode(process.ExitCode))
+                throw new WingetException($"Winget command failed with exit code {process.ExitCode:x8}: {command}");
 
             return output.ToString();
         }
