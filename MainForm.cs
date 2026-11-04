@@ -25,18 +25,26 @@ namespace WinGetMGui
         private List<PackageInfo> _installedPackages = new();
         private List<PackageInfo> _catalogPackages = new();
         private IgnoredPackagesStore _ignored = default!;
+        private WingetOptionsStore _options = default!;
         private ContextMenuStrip _contextMenu = default!;
+        private Panel _optionsHost = default!;
+        private CheckBox chkSilent = default!;
+        private CheckBox chkAcceptSourceAgreements = default!;
+        private CheckBox chkAcceptPackageAgreements = default!;
+        private CheckBox chkForce = default!;
 
         public MainForm()
         {
             InitializeComponent();
             LoadAppIcon();
             _ignored = new IgnoredPackagesStore(IgnoredPackagesStore.DefaultPath);
-            _ignored.Load();
+            LoadStore(IgnoredPackagesStore.DefaultPath, () => _ignored.Load());
+            _options = new WingetOptionsStore(WingetOptionsStore.DefaultPath);
+            LoadStore(WingetOptionsStore.DefaultPath, () => _options.Load());
             SuspendLayout();
             SetupUI();
             ResumeLayout(true);
-            wingetService = new WingetService();
+            wingetService = new WingetService(_options.Options);
         }
 
         private void LoadAppIcon()
@@ -50,14 +58,14 @@ namespace WinGetMGui
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == (Keys.Control | Keys.F) && txtSearch.Enabled && txtSearch.TextBox is TextBox box)
+            if (keyData == (Keys.Control | Keys.F) && IsGridTab && txtSearch.Enabled && txtSearch.TextBox is TextBox box)
             {
                 box.Focus();
                 box.SelectAll();
                 return true;
             }
 
-            if (keyData == Keys.F5 && !_busy)
+            if (keyData == Keys.F5 && !_busy && IsGridTab)
             {
                 BtnRefresh_Click(this, EventArgs.Empty);
                 return true;
@@ -80,6 +88,7 @@ namespace WinGetMGui
             tabs.TabPages.Add(new TabPage("Install"));
             tabs.TabPages.Add(new TabPage("Uninstall"));
             tabs.TabPages.Add(new TabPage("Ignored"));
+            tabs.TabPages.Add(new TabPage("Options"));
             tabs.SelectedIndexChanged += Tabs_SelectedIndexChanged;
 
             // Create StatusStrip (Bottom)
@@ -148,14 +157,47 @@ namespace WinGetMGui
             _contextMenu = new ContextMenuStrip();
             _contextMenu.Opening += ContextMenu_Opening;
 
+            // Options panel (Fill GroupBox "Winget Options", replaces the grid on the Options tab): writes only in-memory options
+            _optionsHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12),
+                Visible = false,
+            };
+            var optionsGroup = new GroupBox
+            {
+                Text = "Winget Options",
+                Dock = DockStyle.Fill,
+            };
+            var optionsPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+            };
+            chkSilent = new CheckBox { Text = "Silent", AutoSize = true };
+            chkAcceptSourceAgreements = new CheckBox { Text = "Accept source agreements", AutoSize = true };
+            chkAcceptPackageAgreements = new CheckBox { Text = "Accept package agreements", AutoSize = true };
+            chkForce = new CheckBox { Text = "Force", AutoSize = true };
+            optionsPanel.Controls.Add(chkSilent);
+            optionsPanel.Controls.Add(chkAcceptSourceAgreements);
+            optionsPanel.Controls.Add(chkAcceptPackageAgreements);
+            optionsPanel.Controls.Add(chkForce);
+            optionsGroup.Controls.Add(optionsPanel);
+            _optionsHost.Controls.Add(optionsGroup);
+
             // Add controls to form (Order matters for Docking)
             this.Controls.Add(dataGridViewPackages); // Fill
+            this.Controls.Add(_optionsHost);         // Fill
             this.Controls.Add(statusStrip);         // Bottom
             this.Controls.Add(toolStrip);           // Top
             this.Controls.Add(tabs);                // Top (outermost)
 
             // Set up data grid columns
             SetupDataGridView();
+            SyncOptionChecks();
+            foreach (var check in new[] { chkSilent, chkAcceptSourceAgreements, chkAcceptPackageAgreements, chkForce })
+                check.CheckedChanged += OptionCheck_CheckedChanged;
             SyncActions();
         }
 
@@ -184,13 +226,11 @@ namespace WinGetMGui
             dataGridViewPackages.Columns[sourceIdx].DataPropertyName = "Source";
         }
 
-        private PackageVerb? ModeVerb => tabs.SelectedIndex switch
-        {
-            0 => PackageVerb.Update,
-            1 => PackageVerb.Install,
-            2 => PackageVerb.Uninstall,
-            _ => null,
-        };
+        private PackageVerb? ModeVerb =>
+            IsUpdateTab ? PackageVerb.Update :
+            IsInstallTab ? PackageVerb.Install :
+            IsUninstallTab ? PackageVerb.Uninstall :
+            null;
 
         private PackageInfo? GetSelectedPackage()
         {
@@ -199,13 +239,18 @@ namespace WinGetMGui
                 : null;
         }
 
+        private bool IsUpdateTab => tabs.SelectedIndex == 0;
+        private bool IsInstallTab => tabs.SelectedIndex == 1;
+        private bool IsUninstallTab => tabs.SelectedIndex == 2;
         private bool IsIgnoredTab => tabs.SelectedIndex == 3;
+        private bool IsOptionsTab => tabs.SelectedIndex == 4;
+        private bool IsGridTab => IsUpdateTab || IsInstallTab || IsUninstallTab || IsIgnoredTab;
 
         private void SyncActions()
         {
             var package = GetSelectedPackage();
             bool idle = !_busy;
-            bool installMode = ModeVerb == PackageVerb.Install;
+            bool installMode = IsInstallTab;
 
             btnAction.Text = IsIgnoredTab ? "Unignore" : ModeVerb is null ? "No action" : $"{ModeVerb}";
             btnAction.Enabled = (idle && IsIgnoredTab)
@@ -257,6 +302,9 @@ namespace WinGetMGui
 
         private void ApplyFilter()
         {
+            if (IsOptionsTab)
+                return;
+
             foreach (var package in _installedPackages)
                 package.Ignored = _ignored.IsIgnored(package);
 
@@ -272,7 +320,7 @@ namespace WinGetMGui
             dataGridViewPackages.DataSource = list;
             dataGridViewPackages.ClearSelection();
             dataGridViewPackages.Columns["Scope"].Visible = IsIgnoredTab;
-            dataGridViewPackages.Columns["Version"].Visible = !IsIgnoredTab;
+            dataGridViewPackages.Columns["Version"].Visible = IsUpdateTab || IsInstallTab || IsUninstallTab;
             SetupContextMenu();
             dataGridViewPackages.ContextMenuStrip = _contextMenu;
             ShowPackageCount();
@@ -339,9 +387,40 @@ namespace WinGetMGui
 
         private async void Tabs_SelectedIndexChanged(object? sender, EventArgs e)
         {
+            dataGridViewPackages.Visible = IsGridTab;
+            _optionsHost.Visible = IsOptionsTab;
+            toolStrip.Visible = IsGridTab;
+
+            if (IsOptionsTab)
+            {
+                statusLabel.Text = string.Empty;
+                return;
+            }
+
             ApplyFilter();
-            if (ModeVerb is PackageVerb.Update or PackageVerb.Uninstall && _installedPackages.Count == 0)
+            if ((IsUpdateTab || IsUninstallTab) && _installedPackages.Count == 0)
                 await RunAsync("Loading packages...", LoadPackages);
+        }
+
+        private void SyncOptionChecks()
+        {
+            chkSilent.Checked = _options.Options.Silent;
+            chkAcceptSourceAgreements.Checked = _options.Options.AcceptSourceAgreements;
+            chkAcceptPackageAgreements.Checked = _options.Options.AcceptPackageAgreements;
+            chkForce.Checked = _options.Options.Force;
+        }
+
+        private void OptionCheck_CheckedChanged(object? sender, EventArgs e)
+        {
+            _options.Changed = true;
+            if (sender == chkSilent)
+                _options.Options.Silent = chkSilent.Checked;
+            else if (sender == chkAcceptSourceAgreements)
+                _options.Options.AcceptSourceAgreements = chkAcceptSourceAgreements.Checked;
+            else if (sender == chkAcceptPackageAgreements)
+                _options.Options.AcceptPackageAgreements = chkAcceptPackageAgreements.Checked;
+            else if (sender == chkForce)
+                _options.Options.Force = chkForce.Checked;
         }
 
         private async void BtnSearch_Click(object? sender, EventArgs e)
@@ -408,20 +487,7 @@ namespace WinGetMGui
         {
             await RunAsync($"{verb.ProgressStatus()} {package.Name}...", async () =>
             {
-                switch (verb)
-                {
-                    case PackageVerb.Install:
-                        await wingetService.InstallPackageAsync(package.Id, SelectedScope);
-                        break;
-                    case PackageVerb.Uninstall:
-                        await wingetService.UninstallPackageAsync(package.Id);
-                        break;
-                    case PackageVerb.Update:
-                        await wingetService.UpdatePackageAsync(package.Id);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(verb), verb, null);
-                }
+                await wingetService.RunPackageVerbAsync(verb, package.Id, SelectedScope);
                 await LoadPackages();
             });
         }
@@ -450,24 +516,17 @@ namespace WinGetMGui
 
         private void DataGridViewPackages_KeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.KeyCode != Keys.Delete || !IsIgnoredTab)
-                return;
-
-            e.SuppressKeyPress = true;
-            UnignoreSelected();
+            if (e.KeyCode == Keys.Delete && IsIgnoredTab)
+            {
+                e.SuppressKeyPress = true;
+                UnignoreSelected();
+            }
         }
 
-        private void TryStoreAction(Action storeAction)
+        private void ApplyStoreAction(Action storeAction)
         {
-            try
-            {
-                storeAction();
-                ApplyFilter();
-            }
-            catch (IOException ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
+            storeAction();
+            ApplyFilter();
         }
 
         private void IgnoreSelected(IgnoreScope scope)
@@ -475,7 +534,7 @@ namespace WinGetMGui
             if (GetSelectedPackage() is not PackageInfo package)
                 return;
 
-            TryStoreAction(() => _ignored.Add(package, scope));
+            ApplyStoreAction(() => _ignored.Add(package, scope));
         }
 
         private void UnignoreSelected()
@@ -484,7 +543,7 @@ namespace WinGetMGui
                 dataGridViewPackages.SelectedRows[0].DataBoundItem is not IgnoredPackage entry)
                 return;
 
-            TryStoreAction(() => _ignored.Remove(entry));
+            ApplyStoreAction(() => _ignored.Remove(entry));
         }
 
         private async void DataGridViewPackages_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
@@ -507,7 +566,7 @@ namespace WinGetMGui
 
         private void TxtSearch_TextChanged(object? sender, EventArgs e)
         {
-            if (ModeVerb == PackageVerb.Install)
+            if (IsInstallTab)
                 return;
 
             ApplyFilter();
@@ -515,16 +574,16 @@ namespace WinGetMGui
 
         private void TxtSearch_Cleared(object? sender, EventArgs e)
         {
-            if (ModeVerb != PackageVerb.Install)
-                return;
-
-            _catalogPackages = new();
-            ApplyFilter();
+            if (IsInstallTab)
+            {
+                _catalogPackages = new();
+                ApplyFilter();
+            }
         }
 
         private async void BtnRefresh_Click(object? sender, EventArgs e)
         {
-            bool installMode = ModeVerb == PackageVerb.Install;
+            bool installMode = IsInstallTab;
 
             await RunAsync("Updating sources...", async () =>
             {
@@ -547,6 +606,33 @@ namespace WinGetMGui
         private async void MainForm_Shown_1(object? sender, EventArgs e)
         {
             await RunAsync("Loading packages...", LoadPackages);
+        }
+
+        private static void LoadStore(string filePath, Action load)
+        {
+            try
+            {
+                load();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"{filePath}\n{ex.Message}");
+            }
+        }
+
+        private void MainForm_FormClosed(object? sender, FormClosedEventArgs e)
+        {
+            try
+            {
+                if (_ignored.Changed)
+                    _ignored.Save();
+                if (_options.Changed)
+                    _options.Save();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
     }
 }

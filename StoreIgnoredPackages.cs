@@ -41,6 +41,8 @@ namespace WinGetMGui
 
         public IReadOnlyList<IgnoredPackage> Entries => _entries;
 
+        public bool Changed { get; private set; }
+
         public IgnoredPackagesStore(string path)
         {
             FilePath = path;
@@ -49,6 +51,7 @@ namespace WinGetMGui
         public void Load()
         {
             _entries.Clear();
+            Changed = false;
             if (!File.Exists(FilePath))
                 return;
 
@@ -62,16 +65,13 @@ namespace WinGetMGui
             {
                 _entries.Clear();
             }
-            catch (IOException)
-            {
-                _entries.Clear();
-            }
         }
 
         public void Save()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
             File.WriteAllText(FilePath, JsonSerializer.Serialize(_entries, JsonOptions));
+            Changed = false;
         }
 
         public void Add(PackageInfo package, IgnoreScope scope)
@@ -85,18 +85,15 @@ namespace WinGetMGui
                 AvailableVersion = package.AvailableVersion,
                 Source = package.Source,
             });
-            Save();
+            Changed = true;
         }
 
         public bool Remove(IgnoredPackage entry)
         {
             var removed = _entries.RemoveAll(e => IdEquals(e.Id, entry.Id) &&
                 (e.Scope == entry.Scope || (entry.Scope == IgnoreScope.Package && e.Scope == IgnoreScope.Version)));
-            if (removed == 0)
-                return false;
-
-            Save();
-            return true;
+            Changed |= removed > 0;
+            return removed > 0;
         }
 
         public bool IsIgnored(PackageInfo package)

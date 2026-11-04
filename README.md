@@ -10,12 +10,13 @@ Search, install, uninstall and update packages from a simple grid-based interfac
   - **Install** — search the winget catalog and install; **Scope** selector (Default/User/Machine) passes `--scope` to winget
   - **Uninstall** — all installed packages
   - **Ignored** — managed ignore entries (unignore via action button, double-click or Delete)
+  - **Options** — winget behavior checkboxes: Silent, Accept source agreements, Accept package agreements, Force (off by default); saved to `%AppData%\WinGetMGui\settings.json`
 - **Search box** filters Update/Uninstall/Ignored rows client-side, searches the catalog on Install
 - **Refresh** (or F5) runs `winget source update` first, then reloads the current tab
 - **Ignore rules** stored at `%AppData%\WinGetMGui\ignored.json` (per package or per available version)
 - **Localized winget output** handled: probes `--output-locale en-US` (auto-enabled once winget supports it) and falls back to positional column mapping for non-English winget output
 - Install/uninstall/upgrade run in their own visible winget console window (`--wait` keeps it open at the end so you can read output and errors)
-- Status bar with progress indicator and package count
+- Status bar with package count
 
 ## Keyboard shortcuts
 

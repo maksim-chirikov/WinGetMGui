@@ -32,49 +32,69 @@ namespace WinGetMGui
         internal const int NoPackagesFoundExitCode = unchecked((int)0x8A150014);
         internal static bool IsNoPackagesFoundExitCode(int exitCode) => exitCode == NoPackagesFoundExitCode;
 
+        private readonly WingetOptions _options;
+
+        public WingetService(WingetOptions options)
+        {
+            _options = options;
+        }
+
         public async Task<List<PackageInfo>> GetInstalledPackagesAsync()
         {
-            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["list", "--disable-interactivity"]));
+            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["list", WingetFlags.DisableInteractivity]));
             return ParseWingetListOutput(output);
         }
 
         public async Task<List<PackageInfo>> SearchPackagesAsync(string query)
         {
             ValidateArgument(query, nameof(query));
-            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["search", query, "--disable-interactivity"]));
+            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["search", query, WingetFlags.DisableInteractivity]));
             return ParseWingetSearchOutput(output);
-        }
-
-        public async Task InstallPackageAsync(string packageId, PackageScope scope)
-        {
-            ValidateArgument(packageId, nameof(packageId));
-            await RunVisibleAsync(await WithOutputLocaleAsync(BuildInstallArguments(packageId, scope)));
-        }
-
-        internal static List<string> BuildInstallArguments(string packageId, PackageScope scope)
-        {
-            var arguments = new List<string> { "install", "--id", packageId };
-            if (scope.Flag() is string scopeFlag)
-                arguments.AddRange(["--scope", scopeFlag]);
-            arguments.AddRange(["--silent", "--disable-interactivity", "--accept-source-agreements", "--accept-package-agreements", "--force"]);
-            return arguments;
-        }
-
-        public async Task UninstallPackageAsync(string packageId)
-        {
-            ValidateArgument(packageId, nameof(packageId));
-            await RunVisibleAsync(await WithOutputLocaleAsync(["uninstall", "--id", packageId, "--silent", "--disable-interactivity", "--accept-source-agreements", "--force"]));
-        }
-
-        public async Task UpdatePackageAsync(string packageId)
-        {
-            ValidateArgument(packageId, nameof(packageId));
-            await RunVisibleAsync(await WithOutputLocaleAsync(["upgrade", "--id", packageId, "--silent", "--disable-interactivity", "--accept-source-agreements", "--accept-package-agreements", "--force"]));
         }
 
         public async Task UpdateSourcesAsync()
         {
-            await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["source", "update", "--disable-interactivity"]));
+            await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["source", "update", WingetFlags.DisableInteractivity]));
+        }
+
+        public async Task RunPackageVerbAsync(PackageVerb verb, string packageId, PackageScope scope)
+        {
+            ValidateArgument(packageId, nameof(packageId));
+            await RunVisibleAsync(await WithOutputLocaleAsync(BuildVerbArguments(verb, packageId, scope, _options)));
+        }
+
+        internal static List<string> BuildVerbArguments(PackageVerb verb, string packageId, PackageScope scope, WingetOptions options)
+        {
+            string verbWord = VerbWord(verb);
+            PackageScope effectiveScope = verb == PackageVerb.Install ? scope : PackageScope.Default;
+            bool withPackageAgreements = verb != PackageVerb.Uninstall;
+
+            var arguments = new List<string> { verbWord, WingetFlags.Id, packageId };
+            AddVerbFlags(arguments, effectiveScope, options, packageAgreements: withPackageAgreements);
+            return arguments;
+        }
+
+        private static string VerbWord(PackageVerb verb) => verb switch
+        {
+            PackageVerb.Install => "install",
+            PackageVerb.Uninstall => "uninstall",
+            PackageVerb.Update => "upgrade",
+            _ => throw new ArgumentOutOfRangeException(nameof(verb), verb, null),
+        };
+
+        private static void AddVerbFlags(List<string> arguments, PackageScope scope, WingetOptions options, bool packageAgreements)
+        {
+            if (scope.Flag() is string scopeFlag)
+                arguments.AddRange([WingetFlags.Scope, scopeFlag]);
+            if (options.Silent)
+                arguments.Add(WingetFlags.Silent);
+            if (options.AcceptSourceAgreements)
+                arguments.Add(WingetFlags.AcceptSourceAgreements);
+            if (packageAgreements && options.AcceptPackageAgreements)
+                arguments.Add(WingetFlags.AcceptPackageAgreements);
+            if (options.Force)
+                arguments.Add(WingetFlags.Force);
+            arguments.Add(WingetFlags.DisableInteractivity);
         }
 
         private static readonly SemaphoreSlim OutputLocaleProbeLock = new(1, 1);
@@ -93,7 +113,7 @@ namespace WinGetMGui
 
                 try
                 {
-                    await ExecuteWingetCommandAsync(["--version", "--output-locale", "en-US"], 15);
+                    await ExecuteWingetCommandAsync(["--version", WingetFlags.OutputLocale, WingetFlags.OutputLocaleEnUs], 15);
                     outputLocaleSupported = true;
                 }
                 catch (Exception ex) when (ex is WingetException or TimeoutException)
@@ -110,7 +130,7 @@ namespace WinGetMGui
         }
 
         internal static List<string> WithOutputLocale(IReadOnlyList<string> arguments, bool supported) =>
-            supported ? ["--output-locale", "en-US", .. arguments] : [.. arguments];
+            supported ? [WingetFlags.OutputLocale, WingetFlags.OutputLocaleEnUs, .. arguments] : [.. arguments];
 
         private static async Task<List<string>> WithOutputLocaleAsync(IReadOnlyList<string> arguments) =>
             WithOutputLocale(arguments, await SupportsOutputLocaleAsync());
@@ -136,7 +156,7 @@ namespace WinGetMGui
 
             foreach (string argument in arguments)
                 processStartInfo.ArgumentList.Add(argument);
-            processStartInfo.ArgumentList.Add("--wait");
+            processStartInfo.ArgumentList.Add(WingetFlags.Wait);
 
             using var process = new Process { StartInfo = processStartInfo };
             process.Start();

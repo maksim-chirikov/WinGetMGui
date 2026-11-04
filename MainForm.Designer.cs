@@ -38,6 +38,7 @@ namespace WinGetMGui
             Text = "Winget Minimal GUI";
             StartPosition = FormStartPosition.CenterScreen;
             Shown += MainForm_Shown_1;
+            FormClosed += MainForm_FormClosed;
         }
 
         #endregion
