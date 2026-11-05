@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace WinGetMGui
 {
@@ -24,18 +23,9 @@ namespace WinGetMGui
 
     public class IgnoredPackagesStore
     {
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            WriteIndented = true,
-            Converters = { new JsonStringEnumConverter() },
-        };
-
         private readonly List<IgnoredPackage> _entries = new();
 
-        public static string DefaultPath => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "WinGetMGui",
-            "ignored.json");
+        public static string DefaultPath => StoreCommon.AppDataFilePath("ignored.json");
 
         public string FilePath { get; }
 
@@ -57,7 +47,7 @@ namespace WinGetMGui
 
             try
             {
-                var loaded = JsonSerializer.Deserialize<List<IgnoredPackage>>(File.ReadAllText(FilePath), JsonOptions);
+                var loaded = JsonSerializer.Deserialize<List<IgnoredPackage>>(File.ReadAllText(FilePath), StoreCommon.JsonOptions);
                 if (loaded is not null)
                     _entries.AddRange(loaded);
             }
@@ -69,8 +59,7 @@ namespace WinGetMGui
 
         public void Save()
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(_entries, JsonOptions));
+            StoreCommon.SaveJson(FilePath, _entries);
             Changed = false;
         }
 

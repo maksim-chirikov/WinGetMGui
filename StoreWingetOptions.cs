@@ -16,20 +16,12 @@ namespace WinGetMGui
 
     public class WingetOptionsStore
     {
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            WriteIndented = true,
-        };
-
         private sealed class SettingsFile
         {
             public WingetOptions? WingetOptions { get; init; }
         }
 
-        public static string DefaultPath => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "WinGetMGui",
-            "settings.json");
+        public static string DefaultPath => StoreCommon.AppDataFilePath("settings.json");
 
         public string FilePath { get; }
 
@@ -51,7 +43,7 @@ namespace WinGetMGui
 
             try
             {
-                var loaded = JsonSerializer.Deserialize<SettingsFile>(File.ReadAllText(FilePath), JsonOptions);
+                var loaded = JsonSerializer.Deserialize<SettingsFile>(File.ReadAllText(FilePath), StoreCommon.JsonOptions);
                 if (loaded?.WingetOptions is not null)
                     Options = loaded.WingetOptions;
             }
@@ -62,8 +54,7 @@ namespace WinGetMGui
 
         public void Save()
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(new SettingsFile { WingetOptions = Options }, JsonOptions));
+            StoreCommon.SaveJson(FilePath, new SettingsFile { WingetOptions = Options });
             Changed = false;
         }
     }
