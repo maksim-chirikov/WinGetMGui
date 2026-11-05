@@ -14,7 +14,7 @@ namespace WinGetMGui
         public bool Force { get; set; }
     }
 
-    public class WingetOptionsStore
+    public class StoreSettings
     {
         private sealed class SettingsFile
         {
@@ -25,18 +25,18 @@ namespace WinGetMGui
 
         public string FilePath { get; }
 
-        public WingetOptions Options { get; private set; } = new();
+        public WingetOptions WingetOptions { get; private set; } = new();
 
         public bool Changed { get; internal set; }
 
-        public WingetOptionsStore(string path)
+        public StoreSettings(string path)
         {
             FilePath = path;
         }
 
         public void Load()
         {
-            Options = new WingetOptions();
+            WingetOptions = new WingetOptions();
             Changed = false;
             if (!File.Exists(FilePath))
                 return;
@@ -45,7 +45,7 @@ namespace WinGetMGui
             {
                 var loaded = JsonSerializer.Deserialize<SettingsFile>(File.ReadAllText(FilePath), StoreCommon.JsonOptions);
                 if (loaded?.WingetOptions is not null)
-                    Options = loaded.WingetOptions;
+                    WingetOptions = loaded.WingetOptions;
             }
             catch (JsonException)
             {
@@ -54,7 +54,7 @@ namespace WinGetMGui
 
         public void Save()
         {
-            StoreCommon.SaveJson(FilePath, new SettingsFile { WingetOptions = Options });
+            StoreCommon.SaveJson(FilePath, new SettingsFile { WingetOptions = WingetOptions });
             Changed = false;
         }
     }

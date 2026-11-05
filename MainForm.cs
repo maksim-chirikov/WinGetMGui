@@ -19,7 +19,7 @@ namespace WinGetMGui
         private TabPage _installTab = default!;
         private TabPage _uninstallTab = default!;
         private TabPage _ignoredTab = default!;
-        private TabPage _optionsTab = default!;
+        private TabPage _settingsTab = default!;
         private ToolStripButton btnSearch = default!;
         private ToolStripButton btnAction = default!;
         private ToolStripButton btnRefresh = default!;
@@ -30,9 +30,9 @@ namespace WinGetMGui
         private List<PackageInfo> _installedPackages = new();
         private List<PackageInfo> _catalogPackages = new();
         private IgnoredPackagesStore _ignored = default!;
-        private WingetOptionsStore _options = default!;
+        private StoreSettings _settings = default!;
         private ContextMenuStrip _contextMenu = default!;
-        private Panel _optionsHost = default!;
+        private Panel _settingsHost = default!;
         private CheckBox chkSilent = default!;
         private CheckBox chkAcceptSourceAgreements = default!;
         private CheckBox chkAcceptPackageAgreements = default!;
@@ -44,12 +44,12 @@ namespace WinGetMGui
             LoadAppIcon();
             _ignored = new IgnoredPackagesStore(IgnoredPackagesStore.DefaultPath);
             LoadStore(IgnoredPackagesStore.DefaultPath, () => _ignored.Load());
-            _options = new WingetOptionsStore(WingetOptionsStore.DefaultPath);
-            LoadStore(WingetOptionsStore.DefaultPath, () => _options.Load());
+            _settings = new StoreSettings(StoreSettings.DefaultPath);
+            LoadStore(StoreSettings.DefaultPath, () => _settings.Load());
             SuspendLayout();
             SetupUI();
             ResumeLayout(true);
-            wingetService = new WingetService(_options.Options);
+            wingetService = new WingetService(_settings.WingetOptions);
         }
 
         private void LoadAppIcon()
@@ -93,8 +93,8 @@ namespace WinGetMGui
             _installTab = new TabPage("Install");
             _uninstallTab = new TabPage("Uninstall");
             _ignoredTab = new TabPage("Ignored");
-            _optionsTab = new TabPage("Options");
-            tabs.TabPages.AddRange(new[] { _updateTab, _installTab, _uninstallTab, _ignoredTab, _optionsTab });
+            _settingsTab = new TabPage("Settings");
+            tabs.TabPages.AddRange(new[] { _updateTab, _installTab, _uninstallTab, _ignoredTab, _settingsTab });
             tabs.SelectedIndexChanged += Tabs_SelectedIndexChanged;
 
             // Create StatusStrip (Bottom)
@@ -164,8 +164,8 @@ namespace WinGetMGui
             _contextMenu.Opening += ContextMenu_Opening;
             dataGridViewPackages.ContextMenuStrip = _contextMenu;
 
-            // Options panel (Fill GroupBox "Winget Options", replaces the grid on the Options tab): writes only in-memory options
-            _optionsHost = new Panel
+            // Settings panel (Fill GroupBox "Winget Options", replaces the grid on the Settings tab): writes only in-memory winget options
+            _settingsHost = new Panel
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(12),
@@ -182,25 +182,25 @@ namespace WinGetMGui
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
             };
-            chkSilent = new CheckBox { Text = "Silent", AutoSize = true, Checked = _options.Options.Silent };
-            chkAcceptSourceAgreements = new CheckBox { Text = "Accept source agreements", AutoSize = true, Checked = _options.Options.AcceptSourceAgreements };
-            chkAcceptPackageAgreements = new CheckBox { Text = "Accept package agreements", AutoSize = true, Checked = _options.Options.AcceptPackageAgreements };
-            chkForce = new CheckBox { Text = "Force", AutoSize = true, Checked = _options.Options.Force };
+            chkSilent = new CheckBox { Text = "Silent", AutoSize = true, Checked = _settings.WingetOptions.Silent };
+            chkAcceptSourceAgreements = new CheckBox { Text = "Accept source agreements", AutoSize = true, Checked = _settings.WingetOptions.AcceptSourceAgreements };
+            chkAcceptPackageAgreements = new CheckBox { Text = "Accept package agreements", AutoSize = true, Checked = _settings.WingetOptions.AcceptPackageAgreements };
+            chkForce = new CheckBox { Text = "Force", AutoSize = true, Checked = _settings.WingetOptions.Force };
             var optionChecks = new (CheckBox, Action<bool>)[]
             {
-                (chkSilent, v => _options.Options.Silent = v),
-                (chkAcceptSourceAgreements, v => _options.Options.AcceptSourceAgreements = v),
-                (chkAcceptPackageAgreements, v => _options.Options.AcceptPackageAgreements = v),
-                (chkForce, v => _options.Options.Force = v),
+                (chkSilent, v => _settings.WingetOptions.Silent = v),
+                (chkAcceptSourceAgreements, v => _settings.WingetOptions.AcceptSourceAgreements = v),
+                (chkAcceptPackageAgreements, v => _settings.WingetOptions.AcceptPackageAgreements = v),
+                (chkForce, v => _settings.WingetOptions.Force = v),
             };
             foreach (var (check, _) in optionChecks)
                 optionsPanel.Controls.Add(check);
             optionsGroup.Controls.Add(optionsPanel);
-            _optionsHost.Controls.Add(optionsGroup);
+            _settingsHost.Controls.Add(optionsGroup);
 
             // Add controls to form (Order matters for Docking)
             this.Controls.Add(dataGridViewPackages); // Fill
-            this.Controls.Add(_optionsHost);         // Fill
+            this.Controls.Add(_settingsHost);         // Fill
             this.Controls.Add(statusStrip);         // Bottom
             this.Controls.Add(toolStrip);           // Top
             this.Controls.Add(tabs);                // Top (outermost)
@@ -210,7 +210,7 @@ namespace WinGetMGui
             foreach (var (check, apply) in optionChecks)
                 check.CheckedChanged += (s, e) =>
                 {
-                    _options.Changed = true;
+                    _settings.Changed = true;
                     apply(check.Checked);
                 };
             SyncActions();
@@ -258,7 +258,7 @@ namespace WinGetMGui
         private bool IsInstallTab => tabs.SelectedTab == _installTab;
         private bool IsUninstallTab => tabs.SelectedTab == _uninstallTab;
         private bool IsIgnoredTab => tabs.SelectedTab == _ignoredTab;
-        private bool IsOptionsTab => tabs.SelectedTab == _optionsTab;
+        private bool IsSettingsTab => tabs.SelectedTab == _settingsTab;
         private bool IsGridTab => IsUpdateTab || IsInstallTab || IsUninstallTab || IsIgnoredTab;
 
         private void SyncActions()
@@ -317,7 +317,7 @@ namespace WinGetMGui
 
         private void ApplyFilter()
         {
-            if (IsOptionsTab)
+            if (IsSettingsTab)
                 return;
 
             foreach (var package in _installedPackages)
@@ -402,10 +402,10 @@ namespace WinGetMGui
         private async void Tabs_SelectedIndexChanged(object? sender, EventArgs e)
         {
             dataGridViewPackages.Visible = IsGridTab;
-            _optionsHost.Visible = IsOptionsTab;
+            _settingsHost.Visible = IsSettingsTab;
             toolStrip.Visible = IsGridTab;
 
-            if (IsOptionsTab)
+            if (IsSettingsTab)
             {
                 statusLabel.Text = string.Empty;
                 return;
@@ -612,8 +612,8 @@ namespace WinGetMGui
             {
                 if (_ignored.Changed)
                     _ignored.Save();
-                if (_options.Changed)
-                    _options.Save();
+                if (_settings.Changed)
+                    _settings.Save();
             }
             catch (Exception ex)
             {
