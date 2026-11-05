@@ -4,12 +4,6 @@
 
 namespace WinGetMGui
 {
-    public enum PackageKind
-    {
-        Installed,
-        Catalog
-    }
-
     public enum PackageVerb
     {
         Install,
@@ -30,7 +24,6 @@ namespace WinGetMGui
 
     public class PackageInfo
     {
-        public PackageKind Kind { get; init; }
         public string Name { get; init; } = string.Empty;
         public string Version { get; init; } = string.Empty;
         public string AvailableVersion { get; init; } = string.Empty;
@@ -38,18 +31,6 @@ namespace WinGetMGui
         public string Id { get; init; } = string.Empty;
         public bool Ignored { get; set; }
 
-        public bool HasUpdate => Allow(PackageVerb.Update) is null;
-
-        public string? Allow(PackageVerb verb)
-        {
-            bool hasUpdate = Kind == PackageKind.Installed && !string.IsNullOrWhiteSpace(AvailableVersion);
-            return verb switch
-            {
-                PackageVerb.Install => Kind == PackageKind.Catalog ? null : "Already installed.",
-                PackageVerb.Uninstall => Kind == PackageKind.Installed ? null : "Not installed.",
-                PackageVerb.Update => Ignored ? "Ignored." : hasUpdate ? null : Kind == PackageKind.Installed ? "No update available." : "Use Install to install it.",
-                _ => throw new ArgumentOutOfRangeException(nameof(verb), verb, null),
-            };
-        }
+        public bool HasUpdate => !string.IsNullOrWhiteSpace(AvailableVersion);
     }
 }

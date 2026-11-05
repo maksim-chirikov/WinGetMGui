@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>WinGetMGui</AssemblyName>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>2026.11.4.0</Version>
+    <Version>2026.11.5.0</Version>
     <Authors>Maxim Chirikov</Authors>
     <Copyright>Copyright (C) 2026 Maxim Chirikov. Licensed under GPL-3.0-or-later.</Copyright>
     <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>

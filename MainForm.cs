@@ -270,7 +270,7 @@ namespace WinGetMGui
             btnAction.Text = IsIgnoredTab ? "Unignore" : ModeVerb is null ? "No action" : $"{ModeVerb}";
             btnAction.Enabled = (idle && IsIgnoredTab)
                 ? dataGridViewPackages.SelectedRows.Count > 0
-                : idle && ModeVerb is PackageVerb verb && package is not null && package.Allow(verb) is null;
+                : idle && ModeVerb is not null && package is not null;
 
             txtSearch.Enabled = idle;
             btnSearch.Enabled = idle && installMode;
@@ -327,7 +327,7 @@ namespace WinGetMGui
             System.Collections.IEnumerable list = ModeVerb switch
             {
                 PackageVerb.Install => _catalogPackages.OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
-                PackageVerb.Update => _installedPackages.Where(p => p.HasUpdate && RowFilter.Matches(filter, p.Name, p.Id, p.Source, p.Version, p.AvailableVersion)).OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
+                PackageVerb.Update => _installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p.Name, p.Id, p.Source, p.Version, p.AvailableVersion)).OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
                 PackageVerb.Uninstall => _installedPackages.Where(p => RowFilter.Matches(filter, p.Name, p.Id, p.Source, p.Version, p.AvailableVersion)).OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
                 _ => _ignored.Entries.Where(e => RowFilter.Matches(filter, e.Name, e.Id, e.Source, e.AvailableVersion)).OrderBy(e => e.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
             };
@@ -465,13 +465,6 @@ namespace WinGetMGui
             var package = GetSelectedPackage();
             if (package is null)
                 return;
-
-            var blockedReason = package.Allow(verb);
-            if (blockedReason is not null)
-            {
-                MessageBox.Show($"{package.Name}: {blockedReason}");
-                return;
-            }
 
             await RunPackageAction(verb, package);
         }

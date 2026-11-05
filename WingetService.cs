@@ -237,7 +237,6 @@ namespace WinGetMGui
             var table = ParseTable(output, ListLayout);
             return Enumerable.Range(0, Rows(table)).Select(i => new PackageInfo
             {
-                Kind = PackageKind.Installed,
                 Name = GetField(table, "Name", i),
                 Id = GetField(table, "Id", i),
                 Version = GetField(table, "Version", i),
@@ -251,7 +250,6 @@ namespace WinGetMGui
             var table = ParseTable(output, SearchLayout);
             return Enumerable.Range(0, Rows(table)).Select(i => new PackageInfo
             {
-                Kind = PackageKind.Catalog,
                 Name = GetField(table, "Name", i),
                 Id = GetField(table, "Id", i),
                 Version = GetField(table, "Version", i),
