@@ -156,6 +156,7 @@ namespace WinGetMGui
 
             _contextMenu = new ContextMenuStrip();
             _contextMenu.Opening += ContextMenu_Opening;
+            dataGridViewPackages.ContextMenuStrip = _contextMenu;
 
             // Options panel (Fill GroupBox "Winget Options", replaces the grid on the Options tab): writes only in-memory options
             _optionsHost = new Panel
@@ -322,7 +323,6 @@ namespace WinGetMGui
             dataGridViewPackages.Columns["Scope"].Visible = IsIgnoredTab;
             dataGridViewPackages.Columns["Version"].Visible = IsUpdateTab || IsInstallTab || IsUninstallTab;
             SetupContextMenu();
-            dataGridViewPackages.ContextMenuStrip = _contextMenu;
             ShowPackageCount();
             SyncActions();
         }
