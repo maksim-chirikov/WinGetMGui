@@ -182,14 +182,19 @@ namespace WinGetMGui
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
             };
-            chkSilent = new CheckBox { Text = "Silent", AutoSize = true };
-            chkAcceptSourceAgreements = new CheckBox { Text = "Accept source agreements", AutoSize = true };
-            chkAcceptPackageAgreements = new CheckBox { Text = "Accept package agreements", AutoSize = true };
-            chkForce = new CheckBox { Text = "Force", AutoSize = true };
-            optionsPanel.Controls.Add(chkSilent);
-            optionsPanel.Controls.Add(chkAcceptSourceAgreements);
-            optionsPanel.Controls.Add(chkAcceptPackageAgreements);
-            optionsPanel.Controls.Add(chkForce);
+            chkSilent = new CheckBox { Text = "Silent", AutoSize = true, Checked = _options.Options.Silent };
+            chkAcceptSourceAgreements = new CheckBox { Text = "Accept source agreements", AutoSize = true, Checked = _options.Options.AcceptSourceAgreements };
+            chkAcceptPackageAgreements = new CheckBox { Text = "Accept package agreements", AutoSize = true, Checked = _options.Options.AcceptPackageAgreements };
+            chkForce = new CheckBox { Text = "Force", AutoSize = true, Checked = _options.Options.Force };
+            var optionChecks = new (CheckBox, Action<bool>)[]
+            {
+                (chkSilent, v => _options.Options.Silent = v),
+                (chkAcceptSourceAgreements, v => _options.Options.AcceptSourceAgreements = v),
+                (chkAcceptPackageAgreements, v => _options.Options.AcceptPackageAgreements = v),
+                (chkForce, v => _options.Options.Force = v),
+            };
+            foreach (var (check, _) in optionChecks)
+                optionsPanel.Controls.Add(check);
             optionsGroup.Controls.Add(optionsPanel);
             _optionsHost.Controls.Add(optionsGroup);
 
@@ -202,9 +207,12 @@ namespace WinGetMGui
 
             // Set up data grid columns
             SetupDataGridView();
-            SyncOptionChecks();
-            foreach (var check in new[] { chkSilent, chkAcceptSourceAgreements, chkAcceptPackageAgreements, chkForce })
-                check.CheckedChanged += OptionCheck_CheckedChanged;
+            foreach (var (check, apply) in optionChecks)
+                check.CheckedChanged += (s, e) =>
+                {
+                    _options.Changed = true;
+                    apply(check.Checked);
+                };
             SyncActions();
         }
 
@@ -406,27 +414,6 @@ namespace WinGetMGui
             ApplyFilter();
             if ((IsUpdateTab || IsUninstallTab) && _installedPackages.Count == 0)
                 await RunAsync("Loading packages...", LoadPackages);
-        }
-
-        private void SyncOptionChecks()
-        {
-            chkSilent.Checked = _options.Options.Silent;
-            chkAcceptSourceAgreements.Checked = _options.Options.AcceptSourceAgreements;
-            chkAcceptPackageAgreements.Checked = _options.Options.AcceptPackageAgreements;
-            chkForce.Checked = _options.Options.Force;
-        }
-
-        private void OptionCheck_CheckedChanged(object? sender, EventArgs e)
-        {
-            _options.Changed = true;
-            if (sender == chkSilent)
-                _options.Options.Silent = chkSilent.Checked;
-            else if (sender == chkAcceptSourceAgreements)
-                _options.Options.AcceptSourceAgreements = chkAcceptSourceAgreements.Checked;
-            else if (sender == chkAcceptPackageAgreements)
-                _options.Options.AcceptPackageAgreements = chkAcceptPackageAgreements.Checked;
-            else if (sender == chkForce)
-                _options.Options.Force = chkForce.Checked;
         }
 
         private async void BtnSearch_Click(object? sender, EventArgs e)
