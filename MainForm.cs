@@ -15,6 +15,11 @@ namespace WinGetMGui
         private ToolStripStatusLabel statusLabel = default!;
         private StatusStrip statusStrip = default!;
         private TabControl tabs = default!;
+        private TabPage _updateTab = default!;
+        private TabPage _installTab = default!;
+        private TabPage _uninstallTab = default!;
+        private TabPage _ignoredTab = default!;
+        private TabPage _optionsTab = default!;
         private ToolStripButton btnSearch = default!;
         private ToolStripButton btnAction = default!;
         private ToolStripButton btnRefresh = default!;
@@ -84,11 +89,12 @@ namespace WinGetMGui
                 ItemSize = new Size(120, 28),
                 Height = 33
             };
-            tabs.TabPages.Add(new TabPage("Update"));
-            tabs.TabPages.Add(new TabPage("Install"));
-            tabs.TabPages.Add(new TabPage("Uninstall"));
-            tabs.TabPages.Add(new TabPage("Ignored"));
-            tabs.TabPages.Add(new TabPage("Options"));
+            _updateTab = new TabPage("Update");
+            _installTab = new TabPage("Install");
+            _uninstallTab = new TabPage("Uninstall");
+            _ignoredTab = new TabPage("Ignored");
+            _optionsTab = new TabPage("Options");
+            tabs.TabPages.AddRange(new[] { _updateTab, _installTab, _uninstallTab, _ignoredTab, _optionsTab });
             tabs.SelectedIndexChanged += Tabs_SelectedIndexChanged;
 
             // Create StatusStrip (Bottom)
@@ -240,11 +246,11 @@ namespace WinGetMGui
                 : null;
         }
 
-        private bool IsUpdateTab => tabs.SelectedIndex == 0;
-        private bool IsInstallTab => tabs.SelectedIndex == 1;
-        private bool IsUninstallTab => tabs.SelectedIndex == 2;
-        private bool IsIgnoredTab => tabs.SelectedIndex == 3;
-        private bool IsOptionsTab => tabs.SelectedIndex == 4;
+        private bool IsUpdateTab => tabs.SelectedTab == _updateTab;
+        private bool IsInstallTab => tabs.SelectedTab == _installTab;
+        private bool IsUninstallTab => tabs.SelectedTab == _uninstallTab;
+        private bool IsIgnoredTab => tabs.SelectedTab == _ignoredTab;
+        private bool IsOptionsTab => tabs.SelectedTab == _optionsTab;
         private bool IsGridTab => IsUpdateTab || IsInstallTab || IsUninstallTab || IsIgnoredTab;
 
         private void SyncActions()
