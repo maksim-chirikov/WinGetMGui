@@ -57,6 +57,12 @@ namespace WinGetMGui
             await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["source", "update", WingetFlags.DisableInteractivity]));
         }
 
+        public async Task<string> GetVersionAsync()
+        {
+            var output = await ExecuteWingetCommandAsync(["--version"], 15);
+            return output.Trim();
+        }
+
         public async Task RunPackageVerbAsync(PackageVerb verb, string packageId, PackageScope scope)
         {
             ValidateArgument(packageId, nameof(packageId));

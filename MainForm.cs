@@ -33,6 +33,7 @@ namespace WinGetMGui
         private StoreSettings _settings = default!;
         private ContextMenuStrip _contextMenu = default!;
         private Panel _settingsHost = default!;
+        private string? _wingetVersion;
         private CheckBox chkSilent = default!;
         private CheckBox chkAcceptSourceAgreements = default!;
         private CheckBox chkAcceptPackageAgreements = default!;
@@ -399,6 +400,28 @@ namespace WinGetMGui
             statusLabel.Text = $"Packages: {dataGridViewPackages.Rows.Count}";
         }
 
+        private async Task ShowWingetVersionAsync()
+        {
+            if (_wingetVersion is string version)
+            {
+                statusLabel.Text = $"Winget: {version}";
+                return;
+            }
+
+            statusLabel.Text = String.Empty;
+            try
+            {
+                _wingetVersion = await wingetService.GetVersionAsync();
+            }
+            catch (Exception)
+            {
+                statusLabel.Text = "Winget version unavailable";
+                return;
+            }
+
+            statusLabel.Text = $"Winget: {_wingetVersion}";
+        }
+
         private async void Tabs_SelectedIndexChanged(object? sender, EventArgs e)
         {
             dataGridViewPackages.Visible = IsGridTab;
@@ -407,7 +430,7 @@ namespace WinGetMGui
 
             if (IsSettingsTab)
             {
-                statusLabel.Text = string.Empty;
+                await ShowWingetVersionAsync();
                 return;
             }
 
