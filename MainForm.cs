@@ -437,8 +437,6 @@ namespace WinGetMGui
             }
 
             ApplyFilter();
-            if ((IsUpdateTab || IsUninstallTab) && _installedPackages.Count == 0)
-                await RunAsync("Loading packages...", LoadPackages);
         }
 
         private async void BtnSearch_Click(object? sender, EventArgs e)
