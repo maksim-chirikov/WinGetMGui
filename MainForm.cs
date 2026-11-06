@@ -305,7 +305,10 @@ namespace WinGetMGui
             finally
             {
                 SetBusy(false);
-                ShowPackageCount();
+                if (IsSettingsTab)
+                    await ShowWingetVersionAsync();
+                else
+                    ShowPackageCount();
             }
         }
 
@@ -402,24 +405,23 @@ namespace WinGetMGui
 
         private async Task ShowWingetVersionAsync()
         {
-            if (_wingetVersion is string version)
-            {
-                statusLabel.Text = $"Winget: {version}";
+            if (_busy)
                 return;
+
+            if (_wingetVersion is null)
+            {
+                statusLabel.Text = string.Empty;
+                try
+                {
+                    _wingetVersion = await wingetService.GetVersionAsync();
+                }
+                catch (Exception)
+                {
+                }
             }
 
-            statusLabel.Text = String.Empty;
-            try
-            {
-                _wingetVersion = await wingetService.GetVersionAsync();
-            }
-            catch (Exception)
-            {
-                statusLabel.Text = "Winget version unavailable";
-                return;
-            }
-
-            statusLabel.Text = $"Winget: {_wingetVersion}";
+            if (!_busy && IsSettingsTab)
+                statusLabel.Text = _wingetVersion is string version ? $"Winget: {version}" : "Winget version unavailable";
         }
 
         private async void Tabs_SelectedIndexChanged(object? sender, EventArgs e)
