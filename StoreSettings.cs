@@ -11,6 +11,7 @@ namespace WinGetMGui
         public bool Silent { get; set; } = true;
         public bool AcceptSourceAgreements { get; set; } = true;
         public bool AcceptPackageAgreements { get; set; } = true;
+        public bool IncludeUnknown { get; set; } = true;
         public bool Force { get; set; }
     }
 

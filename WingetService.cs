@@ -41,6 +41,7 @@ namespace WinGetMGui
 
         public async Task<List<PackageInfo>> GetInstalledPackagesAsync()
         {
+            // No --include-unknown here: list rejects it without --upgrade-available, and plain list already fills Available for version-unknown packages.
             var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["list", WingetFlags.DisableInteractivity]));
             return ParseWingetListOutput(output);
         }
@@ -74,9 +75,10 @@ namespace WinGetMGui
             string verbWord = VerbWord(verb);
             PackageScope effectiveScope = verb == PackageVerb.Install ? scope : PackageScope.Default;
             bool withPackageAgreements = verb != PackageVerb.Uninstall;
+            bool withUnknown = verb == PackageVerb.Update;
 
             var arguments = new List<string> { verbWord, WingetFlags.Id, packageId };
-            AddVerbFlags(arguments, effectiveScope, options, packageAgreements: withPackageAgreements);
+            AddVerbFlags(arguments, effectiveScope, options, packageAgreements: withPackageAgreements, unknown: withUnknown);
             return arguments;
         }
 
@@ -88,10 +90,12 @@ namespace WinGetMGui
             _ => throw new ArgumentOutOfRangeException(nameof(verb), verb, null),
         };
 
-        private static void AddVerbFlags(List<string> arguments, PackageScope scope, WingetOptions options, bool packageAgreements)
+        private static void AddVerbFlags(List<string> arguments, PackageScope scope, WingetOptions options, bool packageAgreements, bool unknown)
         {
             if (scope.Flag() is string scopeFlag)
                 arguments.AddRange([WingetFlags.Scope, scopeFlag]);
+            if (unknown && options.IncludeUnknown)
+                arguments.Add(WingetFlags.IncludeUnknown);
             if (options.Silent)
                 arguments.Add(WingetFlags.Silent);
             if (options.AcceptSourceAgreements)

@@ -12,6 +12,7 @@ namespace WinGetMGui
         internal const string AcceptSourceAgreements = "--accept-source-agreements";
         internal const string AcceptPackageAgreements = "--accept-package-agreements";
         internal const string Force = "--force";
+        internal const string IncludeUnknown = "--include-unknown";
         internal const string DisableInteractivity = "--disable-interactivity";
         internal const string Wait = "--wait";
         internal const string OutputLocale = "--output-locale";
