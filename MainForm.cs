@@ -39,6 +39,8 @@ namespace WinGetMGui
         private CheckBox chkAcceptPackageAgreements = default!;
         private CheckBox chkIncludeUnknown = default!;
         private CheckBox chkForce = default!;
+        private CheckBox chkDisableInteractivity = default!;
+        private CheckBox chkWait = default!;
 
         public MainForm()
         {
@@ -184,25 +186,29 @@ namespace WinGetMGui
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
             };
-            chkSilent = new CheckBox { Text = "Request silent installation", AutoSize = true, Checked = _settings.WingetOptions.Silent };
-            chkAcceptSourceAgreements = new CheckBox { Text = "Accept all source agreements during source operations", AutoSize = true, Checked = _settings.WingetOptions.AcceptSourceAgreements };
-            chkAcceptPackageAgreements = new CheckBox { Text = "Accept all license agreements for packages", AutoSize = true, Checked = _settings.WingetOptions.AcceptPackageAgreements };
-            chkIncludeUnknown = new CheckBox { Text = "Upgrade packages even if their current version cannot be determined", AutoSize = true, Checked = _settings.WingetOptions.IncludeUnknown };
-            chkForce = new CheckBox { Text = "Direct run the command and continue with non security related issues", AutoSize = true, Checked = _settings.WingetOptions.Force };
+            chkSilent = new CheckBox { Text = WingetFlags.Silent, AutoSize = true, Checked = _settings.WingetOptions.Silent };
+            chkDisableInteractivity = new CheckBox { Text = WingetFlags.DisableInteractivity, AutoSize = true, Checked = _settings.WingetOptions.DisableInteractivity };
+            chkAcceptSourceAgreements = new CheckBox { Text = WingetFlags.AcceptSourceAgreements, AutoSize = true, Checked = _settings.WingetOptions.AcceptSourceAgreements };
+            chkAcceptPackageAgreements = new CheckBox { Text = WingetFlags.AcceptPackageAgreements, AutoSize = true, Checked = _settings.WingetOptions.AcceptPackageAgreements };
+            chkIncludeUnknown = new CheckBox { Text = WingetFlags.IncludeUnknown, AutoSize = true, Checked = _settings.WingetOptions.IncludeUnknown };
+            chkWait = new CheckBox { Text = WingetFlags.Wait, AutoSize = true, Checked = _settings.WingetOptions.Wait };
+            chkForce = new CheckBox { Text = WingetFlags.Force, AutoSize = true, Checked = _settings.WingetOptions.Force };
             var optionChecks = new (CheckBox, Action<bool>, string)[]
             {
-                (chkSilent, v => _settings.WingetOptions.Silent = v, WingetFlags.Silent),
-                (chkAcceptSourceAgreements, v => _settings.WingetOptions.AcceptSourceAgreements = v, WingetFlags.AcceptSourceAgreements),
-                (chkAcceptPackageAgreements, v => _settings.WingetOptions.AcceptPackageAgreements = v, WingetFlags.AcceptPackageAgreements),
-                (chkIncludeUnknown, v => _settings.WingetOptions.IncludeUnknown = v, WingetFlags.IncludeUnknown),
-                (chkForce, v => _settings.WingetOptions.Force = v, WingetFlags.Force),
+                (chkSilent, v => _settings.WingetOptions.Silent = v, "Request silent installation"),
+                (chkDisableInteractivity, v => _settings.WingetOptions.DisableInteractivity = v, "Disable interactive prompts"),
+                (chkAcceptSourceAgreements, v => _settings.WingetOptions.AcceptSourceAgreements = v, "Accept all source agreements during source operations"),
+                (chkAcceptPackageAgreements, v => _settings.WingetOptions.AcceptPackageAgreements = v, "Accept all license agreements for packages"),
+                (chkIncludeUnknown, v => _settings.WingetOptions.IncludeUnknown = v, "Upgrade packages even if their current version cannot be determined"),
+                (chkWait, v => _settings.WingetOptions.Wait = v, "Prompts the user to press any key before exiting"),
+                (chkForce, v => _settings.WingetOptions.Force = v, "Direct run the command and continue with non security related issues"),
             };
             var optionToolTips = new ToolTip();
             components.Add(optionToolTips);
-            foreach (var (check, _, flag) in optionChecks)
+            foreach (var (check, _, description) in optionChecks)
             {
                 optionsPanel.Controls.Add(check);
-                optionToolTips.SetToolTip(check, flag);
+                optionToolTips.SetToolTip(check, description);
             }
             optionsGroup.Controls.Add(optionsPanel);
             _settingsHost.Controls.Add(optionsGroup);

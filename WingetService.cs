@@ -42,20 +42,20 @@ namespace WinGetMGui
         public async Task<List<PackageInfo>> GetInstalledPackagesAsync()
         {
             // No --include-unknown here: list rejects it without --upgrade-available, and plain list already fills Available for version-unknown packages.
-            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["list", WingetFlags.DisableInteractivity]));
+            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(BuildUnattendedArguments(["list"])));
             return ParseWingetListOutput(output);
         }
 
         public async Task<List<PackageInfo>> SearchPackagesAsync(string query)
         {
             ValidateArgument(query, nameof(query));
-            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["search", query, WingetFlags.DisableInteractivity]));
+            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(BuildUnattendedArguments(["search", query])));
             return ParseWingetSearchOutput(output);
         }
 
         public async Task UpdateSourcesAsync()
         {
-            await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(["source", "update", WingetFlags.DisableInteractivity]));
+            await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(BuildUnattendedArguments(["source", "update"])));
         }
 
         public async Task<string> GetVersionAsync()
@@ -68,6 +68,12 @@ namespace WinGetMGui
         {
             ValidateArgument(packageId, nameof(packageId));
             await RunVisibleAsync(await WithOutputLocaleAsync(BuildVerbArguments(verb, packageId, scope, _options)));
+        }
+
+        private static List<string> BuildUnattendedArguments(List<string> arguments)
+        {
+            arguments.Add(WingetFlags.DisableInteractivity);
+            return arguments;
         }
 
         internal static List<string> BuildVerbArguments(PackageVerb verb, string packageId, PackageScope scope, WingetOptions options)
@@ -104,7 +110,10 @@ namespace WinGetMGui
                 arguments.Add(WingetFlags.AcceptPackageAgreements);
             if (options.Force)
                 arguments.Add(WingetFlags.Force);
-            arguments.Add(WingetFlags.DisableInteractivity);
+            if (options.DisableInteractivity)
+                arguments.Add(WingetFlags.DisableInteractivity);
+            if (options.Wait)
+                arguments.Add(WingetFlags.Wait);
         }
 
         private static readonly SemaphoreSlim OutputLocaleProbeLock = new(1, 1);
@@ -166,7 +175,6 @@ namespace WinGetMGui
 
             foreach (string argument in arguments)
                 processStartInfo.ArgumentList.Add(argument);
-            processStartInfo.ArgumentList.Add(WingetFlags.Wait);
 
             using var process = new Process { StartInfo = processStartInfo };
             process.Start();
