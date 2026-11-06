@@ -37,6 +37,7 @@ namespace WinGetMGui
         private CheckBox chkSilent = default!;
         private CheckBox chkAcceptSourceAgreements = default!;
         private CheckBox chkAcceptPackageAgreements = default!;
+        private CheckBox chkIncludeUnknown = default!;
         private CheckBox chkForce = default!;
 
         public MainForm()
@@ -183,19 +184,26 @@ namespace WinGetMGui
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
             };
-            chkSilent = new CheckBox { Text = "Silent", AutoSize = true, Checked = _settings.WingetOptions.Silent };
-            chkAcceptSourceAgreements = new CheckBox { Text = "Accept source agreements", AutoSize = true, Checked = _settings.WingetOptions.AcceptSourceAgreements };
-            chkAcceptPackageAgreements = new CheckBox { Text = "Accept package agreements", AutoSize = true, Checked = _settings.WingetOptions.AcceptPackageAgreements };
-            chkForce = new CheckBox { Text = "Force", AutoSize = true, Checked = _settings.WingetOptions.Force };
-            var optionChecks = new (CheckBox, Action<bool>)[]
+            chkSilent = new CheckBox { Text = "Request silent installation", AutoSize = true, Checked = _settings.WingetOptions.Silent };
+            chkAcceptSourceAgreements = new CheckBox { Text = "Accept all source agreements during source operations", AutoSize = true, Checked = _settings.WingetOptions.AcceptSourceAgreements };
+            chkAcceptPackageAgreements = new CheckBox { Text = "Accept all license agreements for packages", AutoSize = true, Checked = _settings.WingetOptions.AcceptPackageAgreements };
+            chkIncludeUnknown = new CheckBox { Text = "Upgrade packages even if their current version cannot be determined", AutoSize = true, Checked = _settings.WingetOptions.IncludeUnknown };
+            chkForce = new CheckBox { Text = "Direct run the command and continue with non security related issues", AutoSize = true, Checked = _settings.WingetOptions.Force };
+            var optionChecks = new (CheckBox, Action<bool>, string)[]
             {
-                (chkSilent, v => _settings.WingetOptions.Silent = v),
-                (chkAcceptSourceAgreements, v => _settings.WingetOptions.AcceptSourceAgreements = v),
-                (chkAcceptPackageAgreements, v => _settings.WingetOptions.AcceptPackageAgreements = v),
-                (chkForce, v => _settings.WingetOptions.Force = v),
+                (chkSilent, v => _settings.WingetOptions.Silent = v, WingetFlags.Silent),
+                (chkAcceptSourceAgreements, v => _settings.WingetOptions.AcceptSourceAgreements = v, WingetFlags.AcceptSourceAgreements),
+                (chkAcceptPackageAgreements, v => _settings.WingetOptions.AcceptPackageAgreements = v, WingetFlags.AcceptPackageAgreements),
+                (chkIncludeUnknown, v => _settings.WingetOptions.IncludeUnknown = v, WingetFlags.IncludeUnknown),
+                (chkForce, v => _settings.WingetOptions.Force = v, WingetFlags.Force),
             };
-            foreach (var (check, _) in optionChecks)
+            var optionToolTips = new ToolTip();
+            components.Add(optionToolTips);
+            foreach (var (check, _, flag) in optionChecks)
+            {
                 optionsPanel.Controls.Add(check);
+                optionToolTips.SetToolTip(check, flag);
+            }
             optionsGroup.Controls.Add(optionsPanel);
             _settingsHost.Controls.Add(optionsGroup);
 
@@ -208,7 +216,7 @@ namespace WinGetMGui
 
             // Set up data grid columns
             SetupDataGridView();
-            foreach (var (check, apply) in optionChecks)
+            foreach (var (check, apply, _) in optionChecks)
                 check.CheckedChanged += (s, e) =>
                 {
                     _settings.Changed = true;
