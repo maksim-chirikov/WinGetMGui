@@ -14,7 +14,7 @@ namespace WinGetMGui
         public bool IncludeUnknown { get; set; } = true;
         public bool Force { get; set; }
         public bool DisableInteractivity { get; set; } = true;
-        public bool Wait { get; set; } = true;
+        public bool Wait { get; set; }
     }
 
     public class StoreSettings
