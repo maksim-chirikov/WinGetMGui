@@ -1,7 +1,6 @@
 # WinGetMGui
 
-A minimal Windows GUI wrapper for [winget](https://learn.microsoft.com/windows/package-manager/), the Windows Package Manager.
-Search, install, uninstall and update packages from a simple grid-based interface.
+WinGet minimal GUI. Search, install, uninstall and update packages from a simple interface with [winget](https://learn.microsoft.com/windows/package-manager/), the Windows Package Manager.
 
 ## Features
 
@@ -16,7 +15,7 @@ Search, install, uninstall and update packages from a simple grid-based interfac
 - **Ignore rules** (per package or per available version)
 - **App data** — settings and ignore rules are persisted in `%AppData%\WinGetMGui`
 - **Localized winget output** handled: probes `--output-locale en-US` (auto-enabled once winget supports it) and falls back to positional column mapping for non-English winget output
-- **Info** — package details from `winget show` in a modal window (Info button or context menu on any grid tab)
+- **Info** — package details from `winget show` (Info button or context menu)
 - Install/uninstall/upgrade run in their own visible winget console window (the **Wait** setting adds `--wait` to keep it open at the end so you can read output and errors)
 - Status bar with package count
 
@@ -25,10 +24,10 @@ Search, install, uninstall and update packages from a simple grid-based interfac
 | Shortcut | Action |
 |---|---|
 | `Ctrl+F` | Focus the search box |
-| `F5` | Refresh (when idle) |
+| `F5` | Refresh |
 | `Delete` | Unignore entry (Ignored tab) |
 | Double-click | Current tab's verb on the selected row |
-| Right-click | Context menu (Info, verb + ignore options on Update tab) |
+| Right-click | Context menu |
 
 ## Requirements
 
