@@ -1,6 +1,6 @@
-# WinGetMGui
+# WinGet minimal GUI
 
-WinGet minimal GUI. Search, install, uninstall and update packages from a simple interface with [winget](https://learn.microsoft.com/windows/package-manager/), the Windows Package Manager.
+WinGetMGui. Search, install, uninstall and update packages from a simple interface with [winget](https://learn.microsoft.com/windows/package-manager/), the Windows Package Manager.
 
 ## Features
 
