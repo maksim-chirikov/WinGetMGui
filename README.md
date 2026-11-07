@@ -10,12 +10,14 @@ Search, install, uninstall and update packages from a simple grid-based interfac
   - **Install** — search the winget catalog and install; **Scope** selector (Default/User/Machine) passes `--scope` to winget
   - **Uninstall** — all installed packages
   - **Ignored** — managed ignore entries (unignore via action button, double-click or Delete)
-  - **Settings** — winget behavior checkboxes: Silent, Accept source agreements, Accept package agreements, Force (off by default); saved to `%AppData%\WinGetMGui\settings.json`
+  - **Settings** — winget behavior checkboxes: Silent, Disable interactivity, Accept source agreements, Accept package agreements, Include unknown, Wait, Force (Wait and Force off by default)
 - **Search box** filters Update/Uninstall/Ignored rows client-side, searches the catalog on Install
 - **Refresh** (or F5) runs `winget source update` first, then reloads the current tab
-- **Ignore rules** stored at `%AppData%\WinGetMGui\ignored.json` (per package or per available version)
+- **Ignore rules** (per package or per available version)
+- **App data** — settings and ignore rules are persisted in `%AppData%\WinGetMGui`
 - **Localized winget output** handled: probes `--output-locale en-US` (auto-enabled once winget supports it) and falls back to positional column mapping for non-English winget output
-- Install/uninstall/upgrade run in their own visible winget console window (`--wait` keeps it open at the end so you can read output and errors)
+- **Info** — package details from `winget show` in a modal window (Info button or context menu on any grid tab)
+- Install/uninstall/upgrade run in their own visible winget console window (the **Wait** setting adds `--wait` to keep it open at the end so you can read output and errors)
 - Status bar with package count
 
 ## Keyboard shortcuts
@@ -26,11 +28,12 @@ Search, install, uninstall and update packages from a simple grid-based interfac
 | `F5` | Refresh (when idle) |
 | `Delete` | Unignore entry (Ignored tab) |
 | Double-click | Current tab's verb on the selected row |
-| Right-click | Context menu (verb + ignore options on Update tab) |
+| Right-click | Context menu (Info, verb + ignore options on Update tab) |
 
 ## Requirements
 
 - Windows with winget (`winget` available on `PATH`)
+- .NET 8 Desktop Runtime to run
 - .NET 8 SDK to build
 
 ## Build
