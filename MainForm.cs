@@ -21,6 +21,7 @@ namespace WinGetMGui
         private TabPage _ignoredTab = default!;
         private TabPage _settingsTab = default!;
         private ToolStripButton btnSearch = default!;
+        private ToolStripButton btnInfo = default!;
         private ToolStripButton btnAction = default!;
         private ToolStripButton btnRefresh = default!;
         private ToolStripDropDownButton btnScope = default!;
@@ -127,6 +128,11 @@ namespace WinGetMGui
             btnSearch.Click += BtnSearch_Click;
             toolStrip.Items.Add(btnSearch);
 
+            // Info Button (grid tabs, selected row): winget show details in a modal window
+            btnInfo = new ToolStripButton("Info");
+            btnInfo.Click += BtnInfo_Click;
+            toolStrip.Items.Add(btnInfo);
+
             // Install scope (Install tab only): check marks show the active selection
             btnScope = new ToolStripDropDownButton("Scope");
             scopeDefaultItem = new ToolStripMenuItem("Default", null, ScopeItem_Click) { Checked = true };
@@ -138,8 +144,9 @@ namespace WinGetMGui
             btnScope.Visible = false;
             toolStrip.Items.Add(btnScope);
 
-            // Action Button (verb follows the selected tab)
+            // Action Button (verb follows the selected tab; bold = the default action also run by grid double-click)
             btnAction = new ToolStripButton();
+            btnAction.Font = new Font(toolStrip.Font, FontStyle.Bold);
             btnAction.Click += BtnAction_Click;
             toolStrip.Items.Add(btnAction);
 
@@ -289,6 +296,7 @@ namespace WinGetMGui
 
             txtSearch.Enabled = idle;
             btnSearch.Enabled = idle && installMode;
+            btnInfo.Enabled = idle && IsGridTab && dataGridViewPackages.SelectedRows.Count > 0;
             btnScope.Visible = installMode;
             btnRefresh.Enabled = idle;
         }
@@ -301,16 +309,18 @@ namespace WinGetMGui
             SyncActions();
         }
 
-        private async Task RunAsync(string progressStatus, Func<Task> action)
+        private async Task<bool> RunAsync(string progressStatus, Func<Task> action)
         {
             if (_busy)
-                return;
+                return false;
 
             SetBusy(true);
+            bool completed = false;
             try
             {
                 statusLabel.Text = progressStatus;
                 await action();
+                completed = true;
             }
             catch (Exception ex)
             {
@@ -324,6 +334,7 @@ namespace WinGetMGui
                 else
                     ShowPackageCount();
             }
+            return completed;
         }
 
         private async Task LoadPackages()
@@ -365,6 +376,8 @@ namespace WinGetMGui
 
             if (IsIgnoredTab)
             {
+                _contextMenu.Items.Add("Info", null, async (s, e) => await ShowInfoSelected());
+                _contextMenu.Items.Add(new ToolStripSeparator());
                 _contextMenu.Items.Add("Unignore", null, (s, e) => UnignoreSelected());
                 return;
             }
@@ -372,6 +385,8 @@ namespace WinGetMGui
             if (ModeVerb is not PackageVerb verb)
                 return;
 
+            _contextMenu.Items.Add("Info", null, async (s, e) => await ShowInfoSelected());
+            _contextMenu.Items.Add(new ToolStripSeparator());
             _contextMenu.Items.Add(verb.ToString(), null, async (s, e) => await TryStart(verb));
 
             if (verb == PackageVerb.Update)
@@ -482,6 +497,11 @@ namespace WinGetMGui
             await TryStart(verb);
         }
 
+        private async void BtnInfo_Click(object? sender, EventArgs e)
+        {
+            await ShowInfoSelected();
+        }
+
         private PackageScope SelectedScope =>
             scopeUserItem.Checked ? PackageScope.User :
             scopeMachineItem.Checked ? PackageScope.Machine :
@@ -513,6 +533,45 @@ namespace WinGetMGui
                 await wingetService.RunPackageVerbAsync(verb, package.Id, SelectedScope);
                 await LoadPackages();
             });
+        }
+
+        private async Task ShowInfoSelected()
+        {
+            if (_busy || dataGridViewPackages.SelectedRows.Count == 0)
+                return;
+
+            string name = dataGridViewPackages.SelectedRows[0].DataBoundItem switch
+            {
+                PackageInfo package => package.Name,
+                IgnoredPackage entry => entry.Name,
+                _ => string.Empty,
+            };
+            string id = dataGridViewPackages.SelectedRows[0].DataBoundItem switch
+            {
+                PackageInfo package => package.Id,
+                IgnoredPackage entry => entry.Id,
+                _ => string.Empty,
+            };
+            if (id.Length == 0)
+                return;
+
+            await ShowInfoAsync(name, id);
+        }
+
+        private async Task ShowInfoAsync(string name, string id)
+        {
+            string output = string.Empty;
+            bool completed = await RunAsync($"Getting info {name}...", async () =>
+            {
+                output = await wingetService.ShowPackageAsync(id);
+            });
+
+            if (!completed)
+                return;
+
+            string content = string.IsNullOrWhiteSpace(output) ? "No information available." : output;
+            using var dialog = new InfoForm($"Info - {name}", content);
+            dialog.ShowDialog(this);
         }
 
         private void DataGridViewPackages_SelectionChanged(object? sender, EventArgs e)

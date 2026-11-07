@@ -53,6 +53,13 @@ namespace WinGetMGui
             return ParseWingetSearchOutput(output);
         }
 
+        public async Task<string> ShowPackageAsync(string packageId)
+        {
+            ValidateArgument(packageId, nameof(packageId));
+            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(BuildUnattendedArguments(BuildShowArguments(packageId))));
+            return output;
+        }
+
         public async Task UpdateSourcesAsync()
         {
             await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(BuildUnattendedArguments(["source", "update"])));
@@ -75,6 +82,8 @@ namespace WinGetMGui
             arguments.Add(WingetFlags.DisableInteractivity);
             return arguments;
         }
+
+        internal static List<string> BuildShowArguments(string packageId) => ["show", WingetFlags.Id, packageId];
 
         internal static List<string> BuildVerbArguments(PackageVerb verb, string packageId, PackageScope scope, WingetOptions options)
         {
