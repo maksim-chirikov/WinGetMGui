@@ -175,7 +175,7 @@ namespace WinGetMGui
             _contextMenu.Opening += ContextMenu_Opening;
             dataGridViewPackages.ContextMenuStrip = _contextMenu;
 
-            // Settings panel (Fill GroupBox "Winget Options", replaces the grid on the Settings tab): writes only in-memory winget options
+            // Settings panel (Top-docked AutoSize GroupBox "Winget Options", replaces the grid on the Settings tab): writes only in-memory winget options
             _settingsHost = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -185,13 +185,17 @@ namespace WinGetMGui
             var optionsGroup = new GroupBox
             {
                 Text = "Winget Options",
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowOnly,
             };
             var optionsPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowOnly,
             };
             chkSilent = new CheckBox { Text = WingetFlags.Silent, AutoSize = true, Checked = _settings.WingetOptions.Silent };
             chkDisableInteractivity = new CheckBox { Text = WingetFlags.DisableInteractivity, AutoSize = true, Checked = _settings.WingetOptions.DisableInteractivity };
