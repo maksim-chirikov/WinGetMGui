@@ -86,6 +86,8 @@ namespace WinGetMGui
 
         private void SetupUI()
         {
+            MinimumSize = new Size(700, 440);
+
             // Create TabControl (Top) - tab acts as the action mode
             tabs = new TabControl
             {
