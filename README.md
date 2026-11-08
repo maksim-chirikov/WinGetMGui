@@ -1,22 +1,21 @@
-# WinGet minimal GUI
+# WinGet minimal GUI aka WinGetMGui
 
-WinGetMGui. Search, install, uninstall and update packages from a simple interface with [winget](https://learn.microsoft.com/windows/package-manager/), the Windows Package Manager.
+Search, install, uninstall and update packages from a simple interface with [winget](https://learn.microsoft.com/windows/package-manager/), the Windows Package Manager.
 
 ## Features
 
 - **Tabs**
   - **Update** — installed packages that have updates available; can ignore a specific version or a whole package
-  - **Install** — search the winget catalog and install; **Scope** selector (Default/User/Machine) passes `--scope` to winget
+  - **Install** — search the winget catalog and install; **Scope** selector (Default/User/Machine)
   - **Uninstall** — all installed packages
-  - **Ignored** — managed ignore entries (unignore via action button or Delete)
+  - **Ignored** — managed ignore entries (per package or per available version)
   - **Settings** — winget behavior options: Silent, Disable interactivity, Accept source agreements, Accept package agreements, Include unknown, Wait, Force (Wait and Force off by default)
 - **Search box** filters Update/Uninstall/Ignored rows client-side, searches the catalog on Install
-- **Refresh** (or F5) runs `winget source update` first, then reloads the current tab
-- **Ignore rules** (per package or per available version)
+- **Refresh** runs `winget source update` first, then reloads the current tab
 - **App data** — settings and ignore rules are persisted in `%AppData%\WinGetMGui`
 - **Localized winget output** handled: probes `--output-locale en-US` (auto-enabled once winget supports it) and falls back to positional column mapping for non-English winget output
-- **Info** — the default action (bold Info button): package details from `winget show` via button, double-click or context menu
-- Install/uninstall/upgrade run in their own visible winget console window (the **Wait** setting adds `--wait` to keep it open at the end so you can read output and errors)
+- **Info** — the default action: package details from `winget show`
+- Install/uninstall/upgrade run in their own visible winget console window (enable **Wait** setting to keep it open at the end so you can read output and errors)
 - Status bar with package count
 
 ## Keyboard shortcuts
