@@ -21,8 +21,8 @@ namespace WinGetMGui
             {
                 Multiline = true,
                 ReadOnly = true,
-                ScrollBars = ScrollBars.Both,
-                WordWrap = false,
+                ScrollBars = ScrollBars.Vertical,
+                WordWrap = true,
                 Dock = DockStyle.Fill,
                 Font = ContentFont,
                 Text = text,
