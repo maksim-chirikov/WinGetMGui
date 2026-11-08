@@ -128,8 +128,9 @@ namespace WinGetMGui
             btnSearch.Click += BtnSearch_Click;
             toolStrip.Items.Add(btnSearch);
 
-            // Info Button (grid tabs, selected row): winget show details in a modal window
+            // Info Button (grid tabs, selected row): winget show details in a modal window; bold = the default action also run by grid double-click
             btnInfo = new ToolStripButton("Info");
+            btnInfo.Font = new Font(toolStrip.Font, FontStyle.Bold);
             btnInfo.Click += BtnInfo_Click;
             toolStrip.Items.Add(btnInfo);
 
@@ -144,9 +145,8 @@ namespace WinGetMGui
             btnScope.Visible = false;
             toolStrip.Items.Add(btnScope);
 
-            // Action Button (verb follows the selected tab; bold = the default action also run by grid double-click)
+            // Action Button (verb follows the selected tab)
             btnAction = new ToolStripButton();
-            btnAction.Font = new Font(toolStrip.Font, FontStyle.Bold);
             btnAction.Click += BtnAction_Click;
             toolStrip.Items.Add(btnAction);
 
@@ -651,17 +651,7 @@ namespace WinGetMGui
             if (e.RowIndex < 0)
                 return;
 
-            if (IsIgnoredTab)
-            {
-                UnignoreSelected();
-                return;
-            }
-
-            var package = GetSelectedPackage();
-            if (package is null || ModeVerb is not PackageVerb verb)
-                return;
-
-            await TryStart(verb);
+            await ShowInfoSelected();
         }
 
         private void TxtSearch_TextChanged(object? sender, EventArgs e)

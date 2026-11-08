@@ -8,14 +8,14 @@ WinGetMGui. Search, install, uninstall and update packages from a simple interfa
   - **Update** — installed packages that have updates available; can ignore a specific version or a whole package
   - **Install** — search the winget catalog and install; **Scope** selector (Default/User/Machine) passes `--scope` to winget
   - **Uninstall** — all installed packages
-  - **Ignored** — managed ignore entries (unignore via action button, double-click or Delete)
+  - **Ignored** — managed ignore entries (unignore via action button or Delete)
   - **Settings** — winget behavior options: Silent, Disable interactivity, Accept source agreements, Accept package agreements, Include unknown, Wait, Force (Wait and Force off by default)
 - **Search box** filters Update/Uninstall/Ignored rows client-side, searches the catalog on Install
 - **Refresh** (or F5) runs `winget source update` first, then reloads the current tab
 - **Ignore rules** (per package or per available version)
 - **App data** — settings and ignore rules are persisted in `%AppData%\WinGetMGui`
 - **Localized winget output** handled: probes `--output-locale en-US` (auto-enabled once winget supports it) and falls back to positional column mapping for non-English winget output
-- **Info** — package details from `winget show` (Info button or context menu)
+- **Info** — the default action (bold Info button): package details from `winget show` via button, double-click or context menu
 - Install/uninstall/upgrade run in their own visible winget console window (the **Wait** setting adds `--wait` to keep it open at the end so you can read output and errors)
 - Status bar with package count
 
@@ -26,7 +26,7 @@ WinGetMGui. Search, install, uninstall and update packages from a simple interfa
 | `Ctrl+F` | Focus the search box |
 | `F5` | Refresh |
 | `Delete` | Unignore entry (Ignored tab) |
-| Double-click | Current tab's verb on the selected row |
+| Double-click | Info on the selected row |
 | Right-click | Context menu |
 
 ## Requirements
