@@ -170,7 +170,8 @@ namespace WinGetMGui
             dataGridViewPackages.AllowUserToResizeRows = false;
             dataGridViewPackages.CellDoubleClick += DataGridViewPackages_CellDoubleClick;
             dataGridViewPackages.SelectionChanged += DataGridViewPackages_SelectionChanged;
-            dataGridViewPackages.MouseUp += DataGridViewPackages_MouseUp;
+            dataGridViewPackages.MouseDown += DataGridViewPackages_MouseDown;
+            dataGridViewPackages.CellMouseDown += DataGridViewPackages_CellMouseDown;
             dataGridViewPackages.KeyDown += DataGridViewPackages_KeyDown;
 
             _contextMenu = new ContextMenuStrip();
@@ -368,6 +369,7 @@ namespace WinGetMGui
             };
 
             dataGridViewPackages.DataSource = list;
+            // Binding auto-selects row 0; drop it so a refresh never leaves an unclicked row selected
             dataGridViewPackages.ClearSelection();
             dataGridViewPackages.Columns["Scope"].Visible = IsIgnoredTab;
             dataGridViewPackages.Columns["Version"].Visible = IsUpdateTab || IsInstallTab || IsUninstallTab;
@@ -427,19 +429,6 @@ namespace WinGetMGui
             {
                 e.Cancel = true;
                 return;
-            }
-
-            // The menu is already open (second right-click while open): MouseUp does not fire on the grid again
-            // (ToolStripManager owns the mouse), so Opening must reject a non-row source point itself.
-            if (sender is ContextMenuStrip menu && menu.SourceControl is DataGridView grid)
-            {
-                var p = grid.PointToClient(Cursor.Position);
-                var hit = grid.HitTest(p.X, p.Y);
-                if (hit.RowIndex < 0 || grid.Rows[hit.RowIndex].DataBoundItem is null)
-                {
-                    e.Cancel = true;
-                    return;
-                }
             }
 
             e.Cancel = IsIgnoredTab
@@ -603,21 +592,29 @@ namespace WinGetMGui
             SyncActions();
         }
 
-        private void DataGridViewPackages_MouseUp(object? sender, MouseEventArgs e)
+        private void DataGridViewPackages_MouseDown(object? sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Right)
                 return;
 
-            var menu = dataGridViewPackages.ContextMenuStrip;
-            if (menu is null)
+            // Right click outside a row (headers, blank space below the rows): CellMouseDown does not fire
+            // for the blank space, so drop the selection here to make ContextMenu_Opening cancel the menu.
+            var hit = dataGridViewPackages.HitTest(e.X, e.Y);
+            if (hit.RowIndex < 0)
+                dataGridViewPackages.ClearSelection();
+        }
+
+        private void DataGridViewPackages_CellMouseDown(object? sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Right)
                 return;
 
-            var hit = dataGridViewPackages.HitTest(e.X, e.Y);
-            dataGridViewPackages.ClearSelection();
-            if (hit.RowIndex < 0)
-                menu.Close();
-            else
-                dataGridViewPackages.Rows[hit.RowIndex].Selected = true;
+            // CellMouseDown (right-button down) fires before ContextMenu_Opening, so the selection made here
+            // is already in place when Opening validates it - on the first right click after start, and on a
+            // right click that arrives while the menu is open (ToolStripManager closes the menu first, then
+            // forwards the click to the grid). MultiSelect = false: selecting a row replaces any previous one.
+            if (e.RowIndex >= 0)
+                dataGridViewPackages.Rows[e.RowIndex].Selected = true;
         }
 
         private void DataGridViewPackages_KeyDown(object? sender, KeyEventArgs e)
