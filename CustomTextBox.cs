@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Runtime.InteropServices;
+using Timer = System.Windows.Forms.Timer;
 
 namespace WinGetMGui
 {
@@ -10,6 +11,7 @@ namespace WinGetMGui
     {
         private const int GWL_STYLE = -16;
         private const int WS_CLIPCHILDREN = 0x02000000;
+        private const int FilterDelayMs = 50;
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -23,6 +25,7 @@ namespace WinGetMGui
 
         private Label? _clearLabel;
         private TextBox? _textBox;
+        private Timer? _filterTimer;
 
         protected override void OnSubscribeControlEvents(Control? control)
         {
@@ -51,6 +54,8 @@ namespace WinGetMGui
                 ApplyClipChildren(textBox);
 
                 textBox.Controls.Add(_clearLabel);
+                _filterTimer = new Timer { Interval = FilterDelayMs };
+                _filterTimer.Tick += FilterTimer_Tick;
                 textBox.TextChanged += TextBox_TextChanged;
                 textBox.Resize += TextBox_Resize;
                 textBox.KeyDown += TextBox_KeyDown;
@@ -70,6 +75,9 @@ namespace WinGetMGui
                 _clearLabel.Dispose();
                 _clearLabel = null;
                 _textBox = null;
+
+                _filterTimer?.Dispose();
+                _filterTimer = null;
             }
 
             base.OnUnsubscribeControlEvents(control);
@@ -87,6 +95,17 @@ namespace WinGetMGui
         private void TextBox_TextChanged(object? sender, EventArgs e)
         {
             UpdateClearButton();
+
+            if (_filterTimer is null)
+                return;
+
+            _filterTimer.Stop();
+            _filterTimer.Start();
+        }
+
+        private void FilterTimer_Tick(object? sender, EventArgs e)
+        {
+            _filterTimer?.Stop();
             FilterTextChanged?.Invoke(this, EventArgs.Empty);
         }
 
