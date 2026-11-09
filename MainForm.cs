@@ -25,6 +25,8 @@ namespace WinGetMGui
         private ToolStripButton btnAction = default!;
         private ToolStripButton btnRefresh = default!;
         private ToolStripDropDownButton btnScope = default!;
+        private ToolStripButton btnIgnoreVersion = default!;
+        private ToolStripButton btnIgnorePackage = default!;
         private ToolStripMenuItem scopeDefaultItem = default!;
         private ToolStripMenuItem scopeUserItem = default!;
         private ToolStripMenuItem scopeMachineItem = default!;
@@ -42,6 +44,17 @@ namespace WinGetMGui
         private CheckBox chkForce = default!;
         private CheckBox chkDisableInteractivity = default!;
         private CheckBox chkWait = default!;
+
+        private static class ActionNames
+        {
+            internal const string Search = "Search";
+            internal const string Info = "Info";
+            internal const string Refresh = "Refresh";
+            internal const string Unignore = "Unignore";
+            internal const string NoAction = "No action";
+            internal const string IgnoreVersion = "Ignore version";
+            internal const string IgnorePackage = "Ignore package";
+        }
 
         public MainForm()
         {
@@ -126,13 +139,12 @@ namespace WinGetMGui
             toolStrip.Items.Add(txtSearch);
 
             // Search Button
-            btnSearch = new ToolStripButton("Search");
+            btnSearch = new ToolStripButton(ActionNames.Search);
             btnSearch.Click += BtnSearch_Click;
             toolStrip.Items.Add(btnSearch);
 
-            // Info Button (grid tabs, selected row): winget show details in a modal window; bold = the default action also run by grid double-click
-            btnInfo = new ToolStripButton("Info");
-            btnInfo.Font = new Font(toolStrip.Font, FontStyle.Bold);
+            // Info Button (grid tabs, selected row): winget show details in a modal window; run by grid double-click
+            btnInfo = new ToolStripButton(ActionNames.Info);
             btnInfo.Click += BtnInfo_Click;
             toolStrip.Items.Add(btnInfo);
 
@@ -147,12 +159,21 @@ namespace WinGetMGui
             btnScope.Visible = false;
             toolStrip.Items.Add(btnScope);
 
-            // Action Button (verb follows the selected tab)
+            // Action Button (verb follows the selected tab): bold - the main action of the current tab
             btnAction = new ToolStripButton();
+            btnAction.Font = new Font(toolStrip.Font, FontStyle.Bold);
             btnAction.Click += BtnAction_Click;
             toolStrip.Items.Add(btnAction);
 
-            btnRefresh = new ToolStripButton("Refresh");
+            // Ignore actions (Update tab only): same rules as the context menu items
+            btnIgnoreVersion = new ToolStripButton(ActionNames.IgnoreVersion);
+            btnIgnoreVersion.Click += (s, e) => IgnoreSelected(IgnoreScope.Version);
+            btnIgnorePackage = new ToolStripButton(ActionNames.IgnorePackage);
+            btnIgnorePackage.Click += (s, e) => IgnoreSelected(IgnoreScope.Package);
+            toolStrip.Items.Add(btnIgnoreVersion);
+            toolStrip.Items.Add(btnIgnorePackage);
+
+            btnRefresh = new ToolStripButton(ActionNames.Refresh);
             btnRefresh.Click += BtnRefresh_Click;
             toolStrip.Items.Add(btnRefresh);
 
@@ -296,7 +317,7 @@ namespace WinGetMGui
             bool idle = !_busy;
             bool installMode = IsInstallTab;
 
-            btnAction.Text = IsIgnoredTab ? "Unignore" : ModeVerb is null ? "No action" : $"{ModeVerb}";
+            btnAction.Text = IsIgnoredTab ? ActionNames.Unignore : ModeVerb is null ? ActionNames.NoAction : $"{ModeVerb}";
             btnAction.Enabled = (idle && IsIgnoredTab)
                 ? dataGridViewPackages.SelectedRows.Count > 0
                 : idle && ModeVerb is not null && package is not null;
@@ -305,6 +326,9 @@ namespace WinGetMGui
             btnSearch.Enabled = idle && installMode;
             btnInfo.Enabled = idle && IsGridTab && dataGridViewPackages.SelectedRows.Count > 0;
             btnScope.Visible = installMode;
+            bool updateMode = IsUpdateTab;
+            btnIgnoreVersion.Visible = btnIgnorePackage.Visible = updateMode;
+            btnIgnoreVersion.Enabled = btnIgnorePackage.Enabled = idle && updateMode && dataGridViewPackages.SelectedRows.Count > 0;
             btnRefresh.Enabled = idle;
         }
 
@@ -402,24 +426,24 @@ namespace WinGetMGui
 
             if (IsIgnoredTab)
             {
-                _contextMenu.Items.Add("Info", null, async (s, e) => await ShowInfoSelected());
+                _contextMenu.Items.Add(ActionNames.Info, null, async (s, e) => await ShowInfoSelected());
                 _contextMenu.Items.Add(new ToolStripSeparator());
-                _contextMenu.Items.Add("Unignore", null, (s, e) => UnignoreSelected());
+                _contextMenu.Items.Add(ActionNames.Unignore, null, (s, e) => UnignoreSelected());
                 return;
             }
 
             if (ModeVerb is not PackageVerb verb)
                 return;
 
-            _contextMenu.Items.Add("Info", null, async (s, e) => await ShowInfoSelected());
+            _contextMenu.Items.Add(ActionNames.Info, null, async (s, e) => await ShowInfoSelected());
             _contextMenu.Items.Add(new ToolStripSeparator());
             _contextMenu.Items.Add(verb.ToString(), null, async (s, e) => await TryStart(verb));
 
             if (verb == PackageVerb.Update)
             {
                 _contextMenu.Items.Add(new ToolStripSeparator());
-                _contextMenu.Items.Add("Ignore this version", null, (s, e) => IgnoreSelected(IgnoreScope.Version));
-                _contextMenu.Items.Add("Ignore this package", null, (s, e) => IgnoreSelected(IgnoreScope.Package));
+                _contextMenu.Items.Add(ActionNames.IgnoreVersion, null, (s, e) => IgnoreSelected(IgnoreScope.Version));
+                _contextMenu.Items.Add(ActionNames.IgnorePackage, null, (s, e) => IgnoreSelected(IgnoreScope.Package));
             }
         }
 
