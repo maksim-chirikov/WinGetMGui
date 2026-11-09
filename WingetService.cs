@@ -77,6 +77,13 @@ namespace WinGetMGui
             await RunVisibleAsync(await WithOutputLocaleAsync(BuildVerbArguments(verb, packageId, scope, _options)));
         }
 
+        public string BuildVerbCommandLine(PackageVerb verb, string packageId, PackageScope scope)
+        {
+            ValidateArgument(packageId, nameof(packageId));
+            var arguments = WithOutputLocale(BuildVerbArguments(verb, packageId, scope, _options), outputLocaleSupported == true);
+            return string.Join(' ', [WingetPath, .. arguments]);
+        }
+
         private static List<string> BuildUnattendedArguments(List<string> arguments)
         {
             arguments.Add(WingetFlags.DisableInteractivity);

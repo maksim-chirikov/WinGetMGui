@@ -55,6 +55,7 @@ namespace WinGetMGui
             internal const string NoAction = "No action";
             internal const string IgnoreVersion = "Ignore version";
             internal const string IgnorePackage = "Ignore package";
+            internal const string CopyCommandLine = "Copy command line";
         }
 
         public MainForm()
@@ -446,6 +447,9 @@ namespace WinGetMGui
                 _contextMenu.Items.Add(ActionNames.IgnoreVersion, null, (s, e) => IgnoreSelected(IgnoreScope.Version));
                 _contextMenu.Items.Add(ActionNames.IgnorePackage, null, (s, e) => IgnoreSelected(IgnoreScope.Package));
             }
+
+            _contextMenu.Items.Add(new ToolStripSeparator());
+            _contextMenu.Items.Add(ActionNames.CopyCommandLine, null, (s, e) => CopyCommandLine(verb));
         }
 
         private void ContextMenu_Opening(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -585,6 +589,21 @@ namespace WinGetMGui
             statusLabel.Text = $"{verb.ProgressStatus()} {package.Name}...";
             await wingetService.RunPackageVerbAsync(verb, package.Id, SelectedScope);
             await LoadPackages();
+        }
+
+        private void CopyCommandLine(PackageVerb verb)
+        {
+            if (GetSelectedPackage() is not PackageInfo package)
+                return;
+
+            try
+            {
+                Clipboard.SetText(wingetService.BuildVerbCommandLine(verb, package.Id, SelectedScope));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
         private async Task ShowInfoSelected()
