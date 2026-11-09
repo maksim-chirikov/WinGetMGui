@@ -96,6 +96,13 @@ namespace WinGetMGui
                 return true;
             }
 
+            if (keyData == (Keys.Control | Keys.Tab) || keyData == (Keys.Control | Keys.Shift | Keys.Tab))
+            {
+                int delta = keyData == (Keys.Control | Keys.Shift | Keys.Tab) ? -1 : 1;
+                tabs.SelectedIndex = (tabs.SelectedIndex + delta + tabs.TabCount) % tabs.TabCount;
+                return true;
+            }
+
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
