@@ -316,7 +316,7 @@ namespace WinGetMGui
             SyncActions();
         }
 
-        private async Task<bool> RunAsync(string progressStatus, Func<Task> action)
+        private async Task<bool> RunAsync(Func<Task> action)
         {
             if (_busy)
                 return false;
@@ -325,7 +325,6 @@ namespace WinGetMGui
             bool completed = false;
             try
             {
-                statusLabel.Text = progressStatus;
                 await action();
                 completed = true;
             }
@@ -346,6 +345,7 @@ namespace WinGetMGui
 
         private async Task LoadPackages()
         {
+            statusLabel.Text = "Loading packages...";
             var packages = await wingetService.GetInstalledPackagesAsync();
             _installedPackages = packages;
             ApplyFilter();
@@ -486,11 +486,12 @@ namespace WinGetMGui
             if (string.IsNullOrWhiteSpace(txtSearch.Text))
                 return;
 
-            await RunAsync("Searching packages...", SearchPackages);
+            await RunAsync(SearchPackages);
         }
 
         private async Task SearchPackages()
         {
+            statusLabel.Text = "Searching packages...";
             var packages = await wingetService.SearchPackagesAsync(txtSearch.Text);
             _catalogPackages = packages;
             ApplyFilter();
@@ -536,16 +537,14 @@ namespace WinGetMGui
             if (package is null)
                 return;
 
-            await RunPackageAction(verb, package);
+            await RunAsync(() => RunVerbAsync(verb, package));
         }
 
-        private async Task RunPackageAction(PackageVerb verb, PackageInfo package)
+        private async Task RunVerbAsync(PackageVerb verb, PackageInfo package)
         {
-            await RunAsync($"{verb.ProgressStatus()} {package.Name}...", async () =>
-            {
-                await wingetService.RunPackageVerbAsync(verb, package.Id, SelectedScope);
-                await LoadPackages();
-            });
+            statusLabel.Text = $"{verb.ProgressStatus()} {package.Name}...";
+            await wingetService.RunPackageVerbAsync(verb, package.Id, SelectedScope);
+            await LoadPackages();
         }
 
         private async Task ShowInfoSelected()
@@ -574,8 +573,9 @@ namespace WinGetMGui
         private async Task ShowInfoAsync(string name, string id)
         {
             string output = string.Empty;
-            bool completed = await RunAsync($"Getting info {name}...", async () =>
+            bool completed = await RunAsync(async () =>
             {
+                statusLabel.Text = $"Getting info {name}...";
                 output = await wingetService.ShowPackageAsync(id);
             });
 
@@ -676,29 +676,28 @@ namespace WinGetMGui
 
         private async void BtnRefresh_Click(object? sender, EventArgs e)
         {
+            await RunAsync(RefreshAsync);
+        }
+
+        private async Task RefreshAsync()
+        {
             bool installMode = IsInstallTab;
 
-            await RunAsync("Updating sources...", async () =>
+            statusLabel.Text = "Updating sources...";
+            await wingetService.UpdateSourcesAsync();
+            if (installMode)
             {
-                await wingetService.UpdateSourcesAsync();
-                if (installMode)
-                {
-                    if (!string.IsNullOrWhiteSpace(txtSearch.Text))
-                    {
-                        statusLabel.Text = "Searching packages...";
-                        await SearchPackages();
-                    }
-                    return;
-                }
+                if (!string.IsNullOrWhiteSpace(txtSearch.Text))
+                    await SearchPackages();
+                return;
+            }
 
-                statusLabel.Text = "Loading packages...";
-                await LoadPackages();
-            });
+            await LoadPackages();
         }
 
         private async void MainForm_Shown_1(object? sender, EventArgs e)
         {
-            await RunAsync("Loading packages...", LoadPackages);
+            await RunAsync(LoadPackages);
         }
 
         private static void LoadStore(string filePath, Action load)
