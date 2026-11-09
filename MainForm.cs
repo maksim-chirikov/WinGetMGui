@@ -37,6 +37,7 @@ namespace WinGetMGui
         private ContextMenuStrip _contextMenu = default!;
         private Panel _settingsHost = default!;
         private string? _wingetVersion;
+        private Task<string?>? _versionTask;
         private CheckBox chkSilent = default!;
         private CheckBox chkAcceptSourceAgreements = default!;
         private CheckBox chkAcceptPackageAgreements = default!;
@@ -474,20 +475,35 @@ namespace WinGetMGui
             if (_busy)
                 return;
 
+            statusLabel.Text = string.Empty;
             if (_wingetVersion is null)
-            {
-                statusLabel.Text = string.Empty;
-                try
-                {
-                    _wingetVersion = await wingetService.GetVersionAsync();
-                }
-                catch (Exception)
-                {
-                }
-            }
+                _wingetVersion = await EnsureWingetVersionAsync();
 
             if (!_busy && IsSettingsTab)
                 statusLabel.Text = _wingetVersion is string version ? $"Winget: {version}" : "Winget version unavailable";
+        }
+
+        private Task<string?> EnsureWingetVersionAsync()
+        {
+            if (_wingetVersion is string version)
+                return Task.FromResult<string?>(version);
+            if (_versionTask is Task<string?> task && (!task.IsCompleted || task.Result is not null))
+                return task;
+
+            _versionTask = Task.Run(FetchWingetVersionAsync);
+            return _versionTask;
+        }
+
+        private async Task<string?> FetchWingetVersionAsync()
+        {
+            try
+            {
+                return await wingetService.GetVersionAsync();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
         private async void Tabs_SelectedIndexChanged(object? sender, EventArgs e)
