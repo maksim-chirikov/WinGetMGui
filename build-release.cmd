@@ -1,12 +1,13 @@
 @echo off
 setlocal
 
-set "DIST=dist"
+set "PROJ=%~dp0"
+set "DIST=%PROJ%dist"
 set "PUB=%DIST%\publish"
 set "ZIP=%DIST%\WinGetMGui.zip"
 
 if exist "%PUB%" rd /s /q "%PUB%"
-dotnet publish "WinGetMGui.csproj" -c Release -o "%PUB%" -p:PublishSingleFile=true -p:SelfContained=false -p:DebugType=none -p:DebugSymbols=false
+dotnet publish "%PROJ%WinGetMGui.csproj" -c Release -o "%PUB%" -p:PublishSingleFile=true -p:SelfContained=false -p:DebugType=none -p:DebugSymbols=false
 if errorlevel 1 goto :fail
 
 set "SEVENZIP="
