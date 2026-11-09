@@ -193,6 +193,11 @@ namespace WinGetMGui
             btnAction.Click += BtnAction_Click;
             toolStrip.Items.Add(btnAction);
 
+            // ShowInfo button (label "Show"; grid tabs, selected row): winget show details in a modal window; run by grid double-click
+            btnShowInfo = new ToolStripButton(ActionNames.ShowInfo);
+            btnShowInfo.Click += BtnShowInfo_Click;
+            toolStrip.Items.Add(btnShowInfo);
+
             // Ignore actions (Update tab only): same rules as the context menu items
             btnIgnoreVersion = new ToolStripButton(ActionNames.IgnoreVersion);
             btnIgnoreVersion.Click += (s, e) => IgnoreSelected(IgnoreScope.Version);
@@ -200,11 +205,6 @@ namespace WinGetMGui
             btnIgnorePackage.Click += (s, e) => IgnoreSelected(IgnoreScope.Package);
             toolStrip.Items.Add(btnIgnoreVersion);
             toolStrip.Items.Add(btnIgnorePackage);
-
-            // ShowInfo button (label "Show"; grid tabs, selected row): winget show details in a modal window; run by grid double-click
-            btnShowInfo = new ToolStripButton(ActionNames.ShowInfo);
-            btnShowInfo.Click += BtnShowInfo_Click;
-            toolStrip.Items.Add(btnShowInfo);
 
             btnRefresh = new ToolStripButton(ActionNames.Refresh);
             btnRefresh.Click += BtnRefresh_Click;
@@ -460,18 +460,19 @@ namespace WinGetMGui
 
             if (IsIgnoredTab)
             {
-                _contextMenu.Items.Add(ActionNames.ShowInfo, null, async (s, e) => await ShowInfoSelected());
-                _contextMenu.Items.Add(new ToolStripSeparator());
                 _contextMenu.Items.Add(ActionNames.Unignore, null, (s, e) => UnignoreSelected());
+                _contextMenu.Items.Add(new ToolStripSeparator());
+                _contextMenu.Items.Add(ActionNames.ShowInfo, null, async (s, e) => await ShowInfoSelected());
                 return;
             }
 
             if (ModeVerb is not PackageVerb verb)
                 return;
 
-            _contextMenu.Items.Add(ActionNames.ShowInfo, null, async (s, e) => await ShowInfoSelected());
-            _contextMenu.Items.Add(new ToolStripSeparator());
             _contextMenu.Items.Add(verb.ToString(), null, async (s, e) => await TryStart(verb));
+
+            _contextMenu.Items.Add(new ToolStripSeparator());
+            _contextMenu.Items.Add(ActionNames.ShowInfo, null, async (s, e) => await ShowInfoSelected());
 
             if (verb == PackageVerb.Update)
             {
