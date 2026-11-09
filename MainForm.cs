@@ -98,8 +98,11 @@ namespace WinGetMGui
 
             if (keyData == (Keys.Control | Keys.Tab) || keyData == (Keys.Control | Keys.Shift | Keys.Tab))
             {
+                bool hadSearchFocus = txtSearch.TextBox is TextBox wasBox && wasBox.Focused;
                 int delta = keyData == (Keys.Control | Keys.Shift | Keys.Tab) ? -1 : 1;
                 tabs.SelectedIndex = (tabs.SelectedIndex + delta + tabs.TabCount) % tabs.TabCount;
+                if (hadSearchFocus && txtSearch.TextBox is TextBox focusBox)
+                    focusBox.Focus();
                 return true;
             }
 
