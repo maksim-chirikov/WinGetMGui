@@ -7,6 +7,9 @@ namespace WinGetMGui
     internal static class WingetFlags
     {
         internal const string Id = "--id";
+        internal const string Name = "--name";
+        internal const string Moniker = "--moniker";
+        internal const string Tag = "--tag";
         internal const string Scope = "--scope";
         internal const string Silent = "--silent";
         internal const string AcceptSourceAgreements = "--accept-source-agreements";

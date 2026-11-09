@@ -15,6 +15,28 @@ namespace WinGetMGui
         Machine
     }
 
+    public enum SearchBy
+    {
+        Default,
+        Name,
+        Id,
+        Moniker,
+        Tag
+    }
+
+    public static class SearchByArgument
+    {
+        public static string? Flag(this SearchBy searchBy) => searchBy switch
+        {
+            SearchBy.Default => null,
+            SearchBy.Name => WingetFlags.Name,
+            SearchBy.Id => WingetFlags.Id,
+            SearchBy.Moniker => WingetFlags.Moniker,
+            SearchBy.Tag => WingetFlags.Tag,
+            _ => throw new ArgumentOutOfRangeException(nameof(searchBy), searchBy, null),
+        };
+    }
+
     public static class PackageScopeArgument
     {
         public static string? Flag(this PackageScope scope) => scope switch
@@ -46,10 +68,10 @@ namespace WinGetMGui
             return ParseWingetListOutput(output);
         }
 
-        public async Task<List<PackageInfo>> SearchPackagesAsync(string query)
+        public async Task<List<PackageInfo>> SearchPackagesAsync(string query, SearchBy searchBy)
         {
             ValidateArgument(query, nameof(query));
-            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(BuildUnattendedArguments(["search", query])));
+            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(BuildUnattendedArguments(BuildSearchArguments(query, searchBy))));
             return ParseWingetSearchOutput(output);
         }
 
@@ -91,6 +113,15 @@ namespace WinGetMGui
         }
 
         internal static List<string> BuildShowArguments(string packageId) => ["show", WingetFlags.Id, packageId];
+
+        internal static List<string> BuildSearchArguments(string query, SearchBy searchBy)
+        {
+            var arguments = new List<string> { "search" };
+            if (searchBy.Flag() is string searchByFlag)
+                arguments.Add(searchByFlag);
+            arguments.Add(query);
+            return arguments;
+        }
 
         internal static List<string> BuildVerbArguments(PackageVerb verb, string packageId, PackageScope scope, WingetOptions options)
         {

@@ -6,7 +6,7 @@ WinGetMGui. Search, install, uninstall and update packages from a simple interfa
 
 - **Tabs**
   - **Update** — installed packages that have updates available; can ignore a specific version or a whole package
-  - **Install** — search the winget catalog and install; **Scope** selector (Default/User/Machine) passes `--scope` to winget
+  - **Install** — search the winget catalog and install; **Search By** selector (Default/Name/ID/Moniker/Tag); **Scope** selector (Default/User/Machine)
   - **Uninstall** — all installed packages
   - **Ignored** — managed ignore entries (unignore via action button or Delete)
   - **Settings** — winget behavior options: Silent, Disable interactivity, Accept source agreements, Accept package agreements, Include unknown, Wait, Force (Wait and Force off by default)

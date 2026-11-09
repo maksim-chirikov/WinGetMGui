@@ -25,11 +25,17 @@ namespace WinGetMGui
         private ToolStripButton btnAction = default!;
         private ToolStripButton btnRefresh = default!;
         private ToolStripDropDownButton btnScope = default!;
+        private ToolStripDropDownButton btnSearchBy = default!;
         private ToolStripButton btnIgnoreVersion = default!;
         private ToolStripButton btnIgnorePackage = default!;
         private ToolStripMenuItem scopeDefaultItem = default!;
         private ToolStripMenuItem scopeUserItem = default!;
         private ToolStripMenuItem scopeMachineItem = default!;
+        private ToolStripMenuItem searchByDefaultItem = default!;
+        private ToolStripMenuItem searchByNameItem = default!;
+        private ToolStripMenuItem searchByIdItem = default!;
+        private ToolStripMenuItem searchByMonikerItem = default!;
+        private ToolStripMenuItem searchByTagItem = default!;
         private List<PackageInfo> _installedPackages = new();
         private List<PackageInfo> _catalogPackages = new();
         private IgnoredPackagesStore _ignored = default!;
@@ -155,10 +161,20 @@ namespace WinGetMGui
             btnSearch.Click += BtnSearch_Click;
             toolStrip.Items.Add(btnSearch);
 
-            // Info Button (grid tabs, selected row): winget show details in a modal window; run by grid double-click
-            btnInfo = new ToolStripButton(ActionNames.Info);
-            btnInfo.Click += BtnInfo_Click;
-            toolStrip.Items.Add(btnInfo);
+            // SearchBy selector (Install tab only): the query option is passed to winget search, no filtering in code
+            btnSearchBy = new ToolStripDropDownButton("SearchBy");
+            searchByDefaultItem = new ToolStripMenuItem("Default", null, SearchByItem_Click) { Checked = true };
+            searchByNameItem = new ToolStripMenuItem("Name", null, SearchByItem_Click);
+            searchByIdItem = new ToolStripMenuItem("ID", null, SearchByItem_Click);
+            searchByMonikerItem = new ToolStripMenuItem("Moniker", null, SearchByItem_Click);
+            searchByTagItem = new ToolStripMenuItem("Tag", null, SearchByItem_Click);
+            btnSearchBy.DropDownItems.Add(searchByDefaultItem);
+            btnSearchBy.DropDownItems.Add(searchByNameItem);
+            btnSearchBy.DropDownItems.Add(searchByIdItem);
+            btnSearchBy.DropDownItems.Add(searchByMonikerItem);
+            btnSearchBy.DropDownItems.Add(searchByTagItem);
+            btnSearchBy.Visible = false;
+            toolStrip.Items.Add(btnSearchBy);
 
             // Install scope (Install tab only): check marks show the active selection
             btnScope = new ToolStripDropDownButton("Scope");
@@ -184,6 +200,11 @@ namespace WinGetMGui
             btnIgnorePackage.Click += (s, e) => IgnoreSelected(IgnoreScope.Package);
             toolStrip.Items.Add(btnIgnoreVersion);
             toolStrip.Items.Add(btnIgnorePackage);
+
+            // Info Button (grid tabs, selected row): winget show details in a modal window; run by grid double-click
+            btnInfo = new ToolStripButton(ActionNames.Info);
+            btnInfo.Click += BtnInfo_Click;
+            toolStrip.Items.Add(btnInfo);
 
             btnRefresh = new ToolStripButton(ActionNames.Refresh);
             btnRefresh.Click += BtnRefresh_Click;
@@ -338,6 +359,7 @@ namespace WinGetMGui
             btnSearch.Enabled = idle && installMode;
             btnInfo.Enabled = idle && IsGridTab && dataGridViewPackages.SelectedRows.Count > 0;
             btnScope.Visible = installMode;
+            btnSearchBy.Visible = installMode;
             bool updateMode = IsUpdateTab;
             btnIgnoreVersion.Visible = btnIgnorePackage.Visible = updateMode;
             btnIgnoreVersion.Enabled = btnIgnorePackage.Enabled = idle && updateMode && dataGridViewPackages.SelectedRows.Count > 0;
@@ -546,7 +568,7 @@ namespace WinGetMGui
         private async Task SearchPackages()
         {
             statusLabel.Text = "Searching packages...";
-            var packages = await wingetService.SearchPackagesAsync(txtSearch.Text);
+            var packages = await wingetService.SearchPackagesAsync(txtSearch.Text, SelectedSearchBy);
             _catalogPackages = packages;
             ApplyFilter();
         }
@@ -580,6 +602,22 @@ namespace WinGetMGui
             scopeDefaultItem.Checked = sender == scopeDefaultItem;
             scopeUserItem.Checked = sender == scopeUserItem;
             scopeMachineItem.Checked = sender == scopeMachineItem;
+        }
+
+        private SearchBy SelectedSearchBy =>
+            searchByNameItem.Checked ? SearchBy.Name :
+            searchByIdItem.Checked ? SearchBy.Id :
+            searchByMonikerItem.Checked ? SearchBy.Moniker :
+            searchByTagItem.Checked ? SearchBy.Tag :
+            SearchBy.Default;
+
+        private void SearchByItem_Click(object? sender, EventArgs e)
+        {
+            searchByDefaultItem.Checked = sender == searchByDefaultItem;
+            searchByNameItem.Checked = sender == searchByNameItem;
+            searchByIdItem.Checked = sender == searchByIdItem;
+            searchByMonikerItem.Checked = sender == searchByMonikerItem;
+            searchByTagItem.Checked = sender == searchByTagItem;
         }
 
         private async Task TryStart(PackageVerb verb)
