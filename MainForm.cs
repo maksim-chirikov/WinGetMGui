@@ -21,7 +21,7 @@ namespace WinGetMGui
         private TabPage _ignoredTab = default!;
         private TabPage _settingsTab = default!;
         private ToolStripButton btnSearch = default!;
-        private ToolStripButton btnInfo = default!;
+        private ToolStripButton btnShowInfo = default!;
         private ToolStripButton btnAction = default!;
         private ToolStripButton btnRefresh = default!;
         private ToolStripDropDownButton btnScope = default!;
@@ -55,7 +55,7 @@ namespace WinGetMGui
         private static class ActionNames
         {
             internal const string Search = "Search";
-            internal const string Info = "Info";
+            internal const string ShowInfo = "Show";
             internal const string Refresh = "Refresh";
             internal const string Unignore = "Unignore";
             internal const string NoAction = "No action";
@@ -201,10 +201,10 @@ namespace WinGetMGui
             toolStrip.Items.Add(btnIgnoreVersion);
             toolStrip.Items.Add(btnIgnorePackage);
 
-            // Info Button (grid tabs, selected row): winget show details in a modal window; run by grid double-click
-            btnInfo = new ToolStripButton(ActionNames.Info);
-            btnInfo.Click += BtnInfo_Click;
-            toolStrip.Items.Add(btnInfo);
+            // ShowInfo button (label "Show"; grid tabs, selected row): winget show details in a modal window; run by grid double-click
+            btnShowInfo = new ToolStripButton(ActionNames.ShowInfo);
+            btnShowInfo.Click += BtnShowInfo_Click;
+            toolStrip.Items.Add(btnShowInfo);
 
             btnRefresh = new ToolStripButton(ActionNames.Refresh);
             btnRefresh.Click += BtnRefresh_Click;
@@ -357,7 +357,7 @@ namespace WinGetMGui
 
             txtSearch.Enabled = idle;
             btnSearch.Enabled = idle && installMode;
-            btnInfo.Enabled = idle && IsGridTab && dataGridViewPackages.SelectedRows.Count > 0;
+            btnShowInfo.Enabled = idle && IsGridTab && dataGridViewPackages.SelectedRows.Count > 0;
             btnScope.Visible = installMode;
             btnSearchBy.Visible = installMode;
             bool updateMode = IsUpdateTab;
@@ -460,7 +460,7 @@ namespace WinGetMGui
 
             if (IsIgnoredTab)
             {
-                _contextMenu.Items.Add(ActionNames.Info, null, async (s, e) => await ShowInfoSelected());
+                _contextMenu.Items.Add(ActionNames.ShowInfo, null, async (s, e) => await ShowInfoSelected());
                 _contextMenu.Items.Add(new ToolStripSeparator());
                 _contextMenu.Items.Add(ActionNames.Unignore, null, (s, e) => UnignoreSelected());
                 return;
@@ -469,7 +469,7 @@ namespace WinGetMGui
             if (ModeVerb is not PackageVerb verb)
                 return;
 
-            _contextMenu.Items.Add(ActionNames.Info, null, async (s, e) => await ShowInfoSelected());
+            _contextMenu.Items.Add(ActionNames.ShowInfo, null, async (s, e) => await ShowInfoSelected());
             _contextMenu.Items.Add(new ToolStripSeparator());
             _contextMenu.Items.Add(verb.ToString(), null, async (s, e) => await TryStart(verb));
 
@@ -587,7 +587,7 @@ namespace WinGetMGui
             await TryStart(verb);
         }
 
-        private async void BtnInfo_Click(object? sender, EventArgs e)
+        private async void BtnShowInfo_Click(object? sender, EventArgs e)
         {
             await ShowInfoSelected();
         }
@@ -690,7 +690,7 @@ namespace WinGetMGui
                 return;
 
             string content = string.IsNullOrWhiteSpace(output) ? "No information available." : output;
-            using var dialog = new InfoForm($"Info - {name}", content);
+            using var dialog = new InfoForm($"Show - {name}", content);
             dialog.ShowDialog(this);
         }
 

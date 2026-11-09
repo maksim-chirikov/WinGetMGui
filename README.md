@@ -15,7 +15,7 @@ WinGetMGui. Search, install, uninstall and update packages from a simple interfa
 - **Ignore rules** (per package or per available version)
 - **App data** — settings and ignore rules are persisted in `%AppData%\WinGetMGui`
 - **Localized winget output** handled: probes `--output-locale en-US` (auto-enabled once winget supports it) and falls back to positional column mapping for non-English winget output
-- **Info** — package details from `winget show` via button, double-click or context menu
+- **Show** — package details from `winget show` via button, double-click or context menu
 - Install/uninstall/upgrade run in their own visible winget console window (the **Wait** setting adds `--wait` to keep it open at the end so you can read output and errors)
 - Status bar with package count
 
@@ -26,7 +26,7 @@ WinGetMGui. Search, install, uninstall and update packages from a simple interfa
 | `Ctrl+F` | Focus the search box |
 | `F5` | Refresh |
 | `Delete` | Unignore entry (Ignored tab) |
-| Double-click | Info on the selected row |
+| Double-click | Show on the selected row |
 | Right-click | Context menu |
 
 ## Requirements
