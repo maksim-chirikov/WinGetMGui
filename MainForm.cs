@@ -429,8 +429,8 @@ namespace WinGetMGui
             dataGridViewPackages.DataSource = list;
             // Binding auto-selects row 0; drop it so a refresh never leaves an unclicked row selected
             dataGridViewPackages.ClearSelection();
-            dataGridViewPackages.Columns["Scope"].Visible = IsIgnoredTab;
-            dataGridViewPackages.Columns["Version"].Visible = IsUpdateTab || IsInstallTab || IsUninstallTab;
+            dataGridViewPackages.Columns["Scope"]!.Visible = IsIgnoredTab;
+            dataGridViewPackages.Columns["Version"]!.Visible = IsUpdateTab || IsInstallTab || IsUninstallTab;
             SetupContextMenu();
             ShowPackageCount();
             SyncActions();
