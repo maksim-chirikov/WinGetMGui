@@ -24,6 +24,8 @@ WinGetMGui. Search, install, uninstall and update packages from a simple interfa
 | Shortcut | Action |
 |---|---|
 | `Ctrl+F` | Focus the search box |
+| `F1`-`F4` | Switch to Update / Install / Uninstall / Ignored tab |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Switch to next / previous tab |
 | `F5` | Refresh |
 | `Delete` | Unignore entry (Ignored tab) |
 | Double-click | Show on the selected row |

@@ -20,6 +20,9 @@ namespace WinGetMGui
         private TabPage _uninstallTab = default!;
         private TabPage _ignoredTab = default!;
         private TabPage _settingsTab = default!;
+        private (Keys Key, TabPage Tab)[] _tabShortcuts = default!;
+        private ToolTip _tabToolTips = default!;
+        private TabPage? _hoveredTab;
         private ToolStripButton btnSearch = default!;
         private ToolStripButton btnShowInfo = default!;
         private ToolStripButton btnAction = default!;
@@ -62,6 +65,13 @@ namespace WinGetMGui
             internal const string IgnoreVersion = "Ignore version";
             internal const string IgnorePackage = "Ignore package";
             internal const string CopyCommandLine = "Copy command line";
+        }
+
+        private static class KeyHints
+        {
+            internal const string CtrlF = "Ctrl+F";
+            internal const string Delete = "Delete";
+            internal const string RefreshKey = "F5";
         }
 
         public MainForm()
@@ -112,6 +122,15 @@ namespace WinGetMGui
                 return true;
             }
 
+            foreach (var (key, tab) in _tabShortcuts)
+            {
+                if (keyData == key)
+                {
+                    tabs.SelectedTab = tab;
+                    return true;
+                }
+            }
+
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
@@ -138,6 +157,12 @@ namespace WinGetMGui
             tabs.TabPages.AddRange(new[] { _updateTab, _installTab, _uninstallTab, _ignoredTab, _settingsTab });
             tabs.SelectedIndexChanged += Tabs_SelectedIndexChanged;
 
+            _tabShortcuts = new[] { (Keys.F1, _updateTab), (Keys.F2, _installTab), (Keys.F3, _uninstallTab), (Keys.F4, _ignoredTab) };
+            _tabToolTips = new ToolTip { AutoPopDelay = 30_000, ShowAlways = true };
+            components.Add(_tabToolTips);
+            tabs.MouseMove += Tabs_MouseMove;
+            tabs.MouseLeave += Tabs_MouseLeave;
+
             // Create StatusStrip (Bottom)
             statusStrip = new StatusStrip();
             statusLabel = new ToolStripStatusLabel("Packages: 0");
@@ -157,6 +182,7 @@ namespace WinGetMGui
             txtSearch.Cleared += TxtSearch_Cleared;
             txtSearch.Submitted += BtnSearch_Click;
             txtSearch.FilterTextChanged += TxtSearch_TextChanged;
+            txtSearch.ToolTipText = KeyHints.CtrlF;
             toolStrip.Items.Add(txtSearch);
 
             // Search Button
@@ -210,6 +236,7 @@ namespace WinGetMGui
             toolStrip.Items.Add(btnIgnorePackage);
 
             btnRefresh = new ToolStripButton(ActionNames.Refresh);
+            btnRefresh.ToolTipText = $"{ActionNames.Refresh} ({KeyHints.RefreshKey})";
             btnRefresh.Click += BtnRefresh_Click;
             toolStrip.Items.Add(btnRefresh);
 
@@ -360,6 +387,8 @@ namespace WinGetMGui
             bool installMode = IsInstallTab;
 
             btnAction.Text = IsIgnoredTab ? ActionNames.Unignore : ModeVerb is null ? ActionNames.NoAction : $"{ModeVerb}";
+            if (IsIgnoredTab)
+                btnAction.ToolTipText = $"{ActionNames.Unignore} ({KeyHints.Delete})";
             btnAction.Enabled = (idle && IsIgnoredTab)
                 ? dataGridViewPackages.SelectedRows.Count > 0
                 : idle && ModeVerb is not null && package is not null;
@@ -590,6 +619,50 @@ namespace WinGetMGui
             }
 
             ApplyFilter();
+        }
+
+        private void Tabs_MouseMove(object? sender, MouseEventArgs e)
+        {
+            TabPage? hovered = TabAt(e.Location);
+            if (hovered == _hoveredTab)
+                return;
+
+            _hoveredTab = hovered;
+            if (hovered is null || TabKeyText(hovered) is not string key)
+            {
+                _tabToolTips.Hide(tabs);
+                return;
+            }
+
+            Rectangle rect = tabs.GetTabRect(tabs.TabPages.IndexOf(hovered));
+            _tabToolTips.Show($"{hovered.Text} ({key})", tabs, rect.Left, rect.Bottom);
+        }
+
+        private void Tabs_MouseLeave(object? sender, EventArgs e)
+        {
+            _tabToolTips.Hide(tabs);
+            _hoveredTab = null;
+        }
+
+        private TabPage? TabAt(Point point)
+        {
+            for (int index = 0; index < tabs.TabPages.Count; index++)
+                if (tabs.GetTabRect(index).Contains(point))
+                    return tabs.TabPages[index];
+
+            return null;
+        }
+
+        private string? TabKeyText(TabPage? tab)
+        {
+            if (tab is null)
+                return null;
+
+            foreach (var (key, shortcutTab) in _tabShortcuts)
+                if (shortcutTab == tab)
+                    return key.ToString();
+
+            return null;
         }
 
         private async void BtnSearch_Click(object? sender, EventArgs e)
