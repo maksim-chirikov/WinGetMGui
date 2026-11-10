@@ -326,6 +326,11 @@ namespace WinGetMGui
 
             int sourceIdx = dataGridViewPackages.Columns.Add("Source", "Source");
             dataGridViewPackages.Columns[sourceIdx].DataPropertyName = "Source";
+
+            // DataSource is a plain List: DataGridView's built-in column sorting (header click, F3) needs an
+            // IBindingList and throws InvalidOperationException otherwise. Row order is owned by ApplyFilter (Name).
+            foreach (DataGridViewColumn column in dataGridViewPackages.Columns)
+                column.SortMode = DataGridViewColumnSortMode.NotSortable;
         }
 
         private PackageVerb? ModeVerb =>
