@@ -32,8 +32,8 @@ WinGetMGui. Search, install, uninstall and update packages from a simple interfa
 ## Requirements
 
 - Windows with winget (`winget` available on `PATH`)
-- .NET 8 Desktop Runtime to run
-- .NET 8 SDK to build
+- .NET 10 Desktop Runtime to run
+- .NET 10 SDK to build
 
 ## Build
 
