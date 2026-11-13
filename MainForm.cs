@@ -476,7 +476,11 @@ namespace WinGetMGui
             bool updated = !string.IsNullOrWhiteSpace(entry.AvailableVersion) &&
                 !entry.AvailableVersion.Trim().Equals(entry.Version.Trim(), StringComparison.OrdinalIgnoreCase);
             if (updated)
+            {
+                // Verified: e.CellStyle is non-null; setting Font affects only this cell,
+                // not the column default or sibling cells, and repeated calls are safe.
                 e.CellStyle!.Font = _boldFont;
+            }
         }
 
         private void SetupContextMenu()
