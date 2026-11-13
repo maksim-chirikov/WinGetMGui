@@ -103,7 +103,7 @@ namespace WinGetMGui
         {
             ValidateArgument(packageId, nameof(packageId));
             var arguments = WithOutputLocale(BuildVerbArguments(verb, packageId, scope, _options), outputLocaleSupported == true);
-            return string.Join(' ', [WingetPath, .. arguments]);
+            return string.Join(' ', [WingetPath, .. arguments.Select(QuoteArgument)]);
         }
 
         private static List<string> BuildUnattendedArguments(List<string> arguments)
@@ -194,6 +194,13 @@ namespace WinGetMGui
 
             return outputLocaleSupported.Value;
         }
+
+        // Copied command lines are pasted into cmd: arguments with spaces or quotes (ARP-derived
+        // ids like "Some Product Name") must be quoted, unlike ArgumentList which .NET quotes itself.
+        private static string QuoteArgument(string argument) =>
+            argument.Contains(' ') || argument.Contains('"')
+                ? $"\"{argument.Replace("\"", "\\\"")}\""
+                : argument;
 
         internal static List<string> WithOutputLocale(IReadOnlyList<string> arguments, bool supported) =>
             supported ? [WingetFlags.OutputLocale, WingetFlags.OutputLocaleEnUs, .. arguments] : [.. arguments];
