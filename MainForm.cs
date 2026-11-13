@@ -806,6 +806,8 @@ namespace WinGetMGui
         private async void MainForm_Shown_1(object? sender, EventArgs e)
         {
             await RunAsync(LoadPackages);
+            if (txtSearch.Enabled && txtSearch.TextBox is TextBox box)
+                box.Focus();
         }
 
         private static void LoadStore(string filePath, Action load)
