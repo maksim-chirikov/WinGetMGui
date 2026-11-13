@@ -119,6 +119,9 @@ namespace WinGetMGui
         {
             MinimumSize = new Size(700, 440);
 
+            // Bold font: action button text and changed versions on the Ignored tab
+            _boldFont = new Font(Font, FontStyle.Bold);
+
             // Create TabControl (Top) - tab acts as the action mode
             tabs = new TabControl
             {
@@ -189,7 +192,7 @@ namespace WinGetMGui
 
             // Action Button (verb follows the selected tab): bold - the main action of the current tab
             btnAction = new ToolStripButton();
-            btnAction.Font = new Font(toolStrip.Font, FontStyle.Bold);
+            btnAction.Font = _boldFont;
             btnAction.Click += BtnAction_Click;
             toolStrip.Items.Add(btnAction);
 
@@ -227,6 +230,7 @@ namespace WinGetMGui
             dataGridViewPackages.MouseDown += DataGridViewPackages_MouseDown;
             dataGridViewPackages.CellMouseDown += DataGridViewPackages_CellMouseDown;
             dataGridViewPackages.KeyDown += DataGridViewPackages_KeyDown;
+            dataGridViewPackages.CellFormatting += DataGridViewPackages_CellFormatting;
 
             _contextMenu = new ContextMenuStrip();
             _contextMenu.Opening += ContextMenu_Opening;
@@ -423,14 +427,13 @@ namespace WinGetMGui
                 PackageVerb.Install => _catalogPackages.OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
                 PackageVerb.Update => _installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p.Name, p.Id, p.Source, p.Version, p.AvailableVersion)).OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
                 PackageVerb.Uninstall => _installedPackages.Where(p => RowFilter.Matches(filter, p.Name, p.Id, p.Source, p.Version, p.AvailableVersion)).OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
-                _ => _ignored.Entries.Select(CurrentEntry).Where(e => RowFilter.Matches(filter, e.Name, e.Id, e.Source, e.AvailableVersion)).OrderBy(e => e.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
+                _ => _ignored.Entries.Select(CurrentEntry).Where(e => RowFilter.Matches(filter, e.Name, e.Id, e.Source, e.Version, e.AvailableVersion)).OrderBy(e => e.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
             };
 
             dataGridViewPackages.DataSource = list;
             // Binding auto-selects row 0; drop it so a refresh never leaves an unclicked row selected
             dataGridViewPackages.ClearSelection();
             dataGridViewPackages.Columns["Scope"]!.Visible = IsIgnoredTab;
-            dataGridViewPackages.Columns["Version"]!.Visible = IsUpdateTab || IsInstallTab || IsUninstallTab;
             SetupContextMenu();
             ShowPackageCount();
             SyncActions();
@@ -449,9 +452,28 @@ namespace WinGetMGui
                 Scope = entry.Scope,
                 Id = entry.Id,
                 Name = name,
+                Version = entry.Version,
                 AvailableVersion = availableVersion,
                 Source = entry.Source,
             };
+        }
+
+        private Font _boldFont = null!;
+
+        private void DataGridViewPackages_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (!IsIgnoredTab || e.RowIndex < 0 ||
+                dataGridViewPackages.Columns[e.ColumnIndex].DataPropertyName != "AvailableVersion" ||
+                dataGridViewPackages.Rows[e.RowIndex].DataBoundItem is not IgnoredPackage entry)
+            {
+                return;
+            }
+
+            // Store entries mirror Version = AvailableVersion; only CurrentEntry clones can diverge.
+            bool updated = !string.IsNullOrWhiteSpace(entry.AvailableVersion) &&
+                !entry.AvailableVersion.Trim().Equals(entry.Version.Trim(), StringComparison.OrdinalIgnoreCase);
+            if (updated)
+                e.CellStyle!.Font = _boldFont;
         }
 
         private void SetupContextMenu()
@@ -826,8 +848,6 @@ namespace WinGetMGui
         {
             try
             {
-                if (_ignored.Changed)
-                    _ignored.Save();
                 if (_settings.Changed)
                     _settings.Save();
             }
@@ -835,6 +855,16 @@ namespace WinGetMGui
             {
                 MessageBox.Show(ex.Message);
             }
+            try
+            {
+                if (_ignored.Changed)
+                    _ignored.Save();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            _boldFont.Dispose();
         }
     }
 }

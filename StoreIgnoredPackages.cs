@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace WinGetMGui
 {
@@ -17,6 +18,11 @@ namespace WinGetMGui
         public IgnoreScope Scope { get; init; }
         public string Id { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
+
+        // The Version column on the Ignored tab shows the ignored (available-at-ignore-time) version.
+        // Not persisted: Load seeds it from AvailableVersion.
+        [JsonIgnore]
+        public string Version { get; init; } = string.Empty;
         public string AvailableVersion { get; init; } = string.Empty;
         public string Source { get; init; } = string.Empty;
     }
@@ -49,7 +55,16 @@ namespace WinGetMGui
             {
                 var loaded = JsonSerializer.Deserialize<List<IgnoredPackage>>(File.ReadAllText(FilePath), StoreCommon.JsonOptions);
                 if (loaded is not null)
-                    _entries.AddRange(loaded);
+                    // Version is [JsonIgnore]d: seed it from the stored AvailableVersion.
+                    _entries.AddRange(loaded.Select(e => new IgnoredPackage
+                    {
+                        Scope = e.Scope,
+                        Id = e.Id,
+                        Name = e.Name,
+                        Version = e.AvailableVersion,
+                        AvailableVersion = e.AvailableVersion,
+                        Source = e.Source
+                    }));
             }
             catch (JsonException)
             {
@@ -71,6 +86,7 @@ namespace WinGetMGui
                 Scope = scope,
                 Id = package.Id,
                 Name = package.Name,
+                Version = package.AvailableVersion,
                 AvailableVersion = package.AvailableVersion,
                 Source = package.Source,
             });
