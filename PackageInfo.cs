@@ -22,7 +22,16 @@ namespace WinGetMGui
         };
     }
 
-    public class PackageInfo
+    public interface IPackageRow
+    {
+        string Name { get; }
+        string Id { get; }
+        string Version { get; }
+        string AvailableVersion { get; }
+        string Source { get; }
+    }
+
+    public class PackageInfo : IPackageRow
     {
         public string Name { get; init; } = string.Empty;
         public string Version { get; init; } = string.Empty;

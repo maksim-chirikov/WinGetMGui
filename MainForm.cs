@@ -424,10 +424,10 @@ namespace WinGetMGui
             string filter = txtSearch.Text;
             System.Collections.IEnumerable list = ModeVerb switch
             {
-                PackageVerb.Install => _catalogPackages.OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
-                PackageVerb.Update => _installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p)).OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
-                PackageVerb.Uninstall => _installedPackages.Where(p => RowFilter.Matches(filter, p)).OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
-                _ => _ignored.Entries.Select(CurrentEntry).Where(e => RowFilter.Matches(filter, e)).OrderBy(e => e.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList(),
+                PackageVerb.Install => SortByName(_catalogPackages),
+                PackageVerb.Update => SortByName(_installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p))),
+                PackageVerb.Uninstall => SortByName(_installedPackages.Where(p => RowFilter.Matches(filter, p))),
+                _ => SortByName(_ignored.Entries.Select(CurrentEntry).Where(e => RowFilter.Matches(filter, e))),
             };
 
             dataGridViewPackages.DataSource = list;
@@ -438,6 +438,9 @@ namespace WinGetMGui
             ShowPackageCount();
             SyncActions();
         }
+
+        private static List<T> SortByName<T>(IEnumerable<T> items) where T : IPackageRow =>
+            items.OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList();
 
         private IgnoredPackage CurrentEntry(IgnoredPackage entry)
         {

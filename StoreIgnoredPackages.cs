@@ -13,7 +13,7 @@ namespace WinGetMGui
         Version,
     }
 
-    public class IgnoredPackage
+    public class IgnoredPackage : IPackageRow
     {
         public IgnoreScope Scope { get; init; }
         public string Id { get; init; } = string.Empty;
