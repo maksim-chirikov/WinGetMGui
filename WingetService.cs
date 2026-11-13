@@ -78,13 +78,13 @@ namespace WinGetMGui
         public async Task<string> ShowPackageAsync(string packageId)
         {
             ValidateArgument(packageId, nameof(packageId));
-            var output = await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(BuildUnattendedArguments(BuildShowArguments(packageId))));
+            var output = await ExecuteWingetCommandAsync(BuildUnattendedArguments(BuildShowArguments(packageId)));
             return output;
         }
 
         public async Task UpdateSourcesAsync()
         {
-            await ExecuteWingetCommandAsync(await WithOutputLocaleAsync(BuildUnattendedArguments(["source", "update"])));
+            await ExecuteWingetCommandAsync(BuildUnattendedArguments(["source", "update"]));
         }
 
         public async Task<string> GetVersionAsync()
@@ -96,7 +96,7 @@ namespace WinGetMGui
         public async Task RunPackageVerbAsync(PackageVerb verb, string packageId, PackageScope scope)
         {
             ValidateArgument(packageId, nameof(packageId));
-            await RunVisibleAsync(await WithOutputLocaleAsync(BuildVerbArguments(verb, packageId, scope, _options)));
+            await RunVisibleAsync(BuildVerbArguments(verb, packageId, scope, _options));
         }
 
         public string BuildVerbCommandLine(PackageVerb verb, string packageId, PackageScope scope)
@@ -232,6 +232,8 @@ namespace WinGetMGui
             return quoted.ToString();
         }
 
+        // Prepends --output-locale only where our parsing needs stable English headers (list/search); human-facing output
+        // (show, source update, visible verbs, --version) keeps the user's own language.
         internal static List<string> WithOutputLocale(IReadOnlyList<string> arguments, bool supported) =>
             supported ? [WingetFlags.OutputLocale, WingetFlags.OutputLocaleEnUs, .. arguments] : [.. arguments];
 
