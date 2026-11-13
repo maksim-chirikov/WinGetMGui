@@ -102,8 +102,8 @@ namespace WinGetMGui
         public string BuildVerbCommandLine(PackageVerb verb, string packageId, PackageScope scope)
         {
             ValidateArgument(packageId, nameof(packageId));
-            var arguments = WithOutputLocale(BuildVerbArguments(verb, packageId, scope, _options), outputLocaleSupported == true);
-            return string.Join(' ', [WingetPath, .. arguments.Select(QuoteArgument)]);
+            var arguments = BuildVerbArguments(verb, QuoteArgument(packageId), scope, _options);
+            return string.Join(' ', [WingetPath, .. arguments]);
         }
 
         private static List<string> BuildUnattendedArguments(List<string> arguments)
@@ -195,12 +195,42 @@ namespace WinGetMGui
             return outputLocaleSupported.Value;
         }
 
-        // Copied command lines are pasted into cmd: arguments with spaces or quotes (ARP-derived
-        // ids like "Some Product Name") must be quoted, unlike ArgumentList which .NET quotes itself.
-        private static string QuoteArgument(string argument) =>
-            argument.Contains(' ') || argument.Contains('"')
-                ? $"\"{argument.Replace("\"", "\\\"")}\""
-                : argument;
+        // cmd special characters + delimiters (SS64: & | < > ^ " ( ) and , ; = space tab);
+        // % and ! are deliberately absent - quoting does not protect them (see below).
+        private static readonly char[] CommandLineMetacharacters = [' ', '\t', '"', '&', '|', '<', '>', '^', '(', ')', ';', ',', '='];
+
+        // Quotes one id for the copied command line: the line is pasted into cmd and the id is then
+        // parsed back by winget's CommandLineToArgvW, so quoting follows its rules (backslash runs
+        // only escape before a quote). Quoting also triggers on cmd metacharacters, not just
+        // spaces/quotes: ARP-derived ids can contain metacharacters without spaces (e.g. "AT&T"),
+        // which cmd would otherwise execute. Residual limits, unfixable by quoting: cmd expands
+        // %VAR% (and !VAR! with EnableDelayedExpansion) even inside quotes, and an embedded '"'
+        // combined with a metacharacter breaks cmd's naive quote pairing (cmd and argv quoting
+        // rules conflict); such ids do not occur in practice.
+        internal static string QuoteArgument(string argument)
+        {
+            if (argument.IndexOfAny(CommandLineMetacharacters) < 0)
+                return argument;
+
+            var quoted = new StringBuilder(argument.Length + 8);
+            quoted.Append('"');
+            int backslashes = 0;
+            foreach (char c in argument)
+            {
+                if (c == '\\')
+                {
+                    backslashes++;
+                    continue;
+                }
+                if (c == '"')
+                    quoted.Append('\\', backslashes * 2 + 1).Append('"');
+                else
+                    quoted.Append('\\', backslashes).Append(c);
+                backslashes = 0;
+            }
+            quoted.Append('\\', backslashes * 2).Append('"');
+            return quoted.ToString();
+        }
 
         internal static List<string> WithOutputLocale(IReadOnlyList<string> arguments, bool supported) =>
             supported ? [WingetFlags.OutputLocale, WingetFlags.OutputLocaleEnUs, .. arguments] : [.. arguments];
