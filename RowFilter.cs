@@ -6,6 +6,12 @@ namespace WinGetMGui
 {
     public static class RowFilter
     {
+        public static bool Matches(string? query, PackageInfo p) =>
+            Matches(query, p.Name, p.Id, p.Source, p.Version, p.AvailableVersion);
+
+        public static bool Matches(string? query, IgnoredPackage e) =>
+            Matches(query, e.Name, e.Id, e.Source, e.Version, e.AvailableVersion);
+
         public static bool Matches(string? query, params string?[] fields)
         {
             if (string.IsNullOrWhiteSpace(query))
