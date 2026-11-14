@@ -22,6 +22,7 @@ if exist "%ZIP%" del /q "%ZIP%"
 if errorlevel 1 goto :fail
 
 echo Built "%ZIP%".
+start "" explorer /select,"%ZIP%"
 exit /b 0
 
 :fail
