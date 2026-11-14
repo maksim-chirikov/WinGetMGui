@@ -135,7 +135,7 @@ namespace WinGetMGui
         {
             MinimumSize = new Size(700, 440);
 
-            // Bold font: action button text and changed versions on the Ignored tab
+            // Bold font: action button text
             _boldFont = new Font(Font, FontStyle.Bold);
 
             // Create TabControl (Top) - tab acts as the action mode
