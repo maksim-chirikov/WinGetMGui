@@ -384,8 +384,7 @@ namespace WinGetMGui
             bool installMode = IsInstallTab;
 
             btnAction.Text = IsIgnoredTab ? ActionNames.Unignore : ModeVerb is null ? ActionNames.NoAction : $"{ModeVerb}";
-            if (IsIgnoredTab)
-                btnAction.ToolTipText = $"{ActionNames.Unignore} ({KeyHints.Delete})";
+            btnAction.ToolTipText = IsIgnoredTab ? $"{ActionNames.Unignore} ({KeyHints.Delete})" : string.Empty;
             btnAction.Enabled = (idle && IsIgnoredTab)
                 ? dataGridViewPackages.SelectedRows.Count > 0
                 : idle && ModeVerb is not null && package is not null;
