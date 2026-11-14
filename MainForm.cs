@@ -857,17 +857,10 @@ namespace WinGetMGui
 
         private async Task RefreshAsync()
         {
-            bool installMode = IsInstallTab;
-
+            // Same on every tab: sources + installed list (which also refreshes the Ignored store's
+            // derived fields). A catalog search is re-run only by the Search button/Enter.
             statusLabel.Text = "Updating sources...";
             await wingetService.UpdateSourcesAsync();
-            if (installMode)
-            {
-                if (!string.IsNullOrWhiteSpace(txtSearch.Text))
-                    await SearchPackages();
-                return;
-            }
-
             await LoadPackages();
         }
 
