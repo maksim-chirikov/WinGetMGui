@@ -254,7 +254,6 @@ namespace WinGetMGui
             dataGridViewPackages.MouseDown += DataGridViewPackages_MouseDown;
             dataGridViewPackages.CellMouseDown += DataGridViewPackages_CellMouseDown;
             dataGridViewPackages.KeyDown += DataGridViewPackages_KeyDown;
-            dataGridViewPackages.CellFormatting += DataGridViewPackages_CellFormatting;
 
             _contextMenu = new ContextMenuStrip();
             _contextMenu.Opening += ContextMenu_Opening;
@@ -331,10 +330,6 @@ namespace WinGetMGui
         {
             dataGridViewPackages.Columns.Clear();
 
-            int scopeIdx = dataGridViewPackages.Columns.Add("Scope", "Scope");
-            dataGridViewPackages.Columns[scopeIdx].DataPropertyName = "Scope";
-            dataGridViewPackages.Columns[scopeIdx].FillWeight = 50;
-
             int nameIdx = dataGridViewPackages.Columns.Add("Name", "Name");
             dataGridViewPackages.Columns[nameIdx].DataPropertyName = "Name";
             dataGridViewPackages.Columns[nameIdx].FillWeight = 200;
@@ -350,6 +345,10 @@ namespace WinGetMGui
 
             int sourceIdx = dataGridViewPackages.Columns.Add("Source", "Source");
             dataGridViewPackages.Columns[sourceIdx].DataPropertyName = "Source";
+
+            int scopeIdx = dataGridViewPackages.Columns.Add("Scope", "Scope");
+            dataGridViewPackages.Columns[scopeIdx].DataPropertyName = "Scope";
+            dataGridViewPackages.Columns[scopeIdx].FillWeight = 100;
 
             // DataSource is a plain List: DataGridView's built-in column sorting (header click, F3) needs an
             // IBindingList and throws InvalidOperationException otherwise. Row order is owned by ApplyFilter (Name).
@@ -440,6 +439,7 @@ namespace WinGetMGui
             statusLabel.Text = "Loading packages...";
             var packages = await wingetService.GetInstalledPackagesAsync();
             _installedPackages = packages;
+            _ignored.UpdateFromInstalled(_installedPackages);
             ApplyFilter();
         }
 
@@ -457,13 +457,14 @@ namespace WinGetMGui
                 PackageVerb.Install => SortByName(_catalogPackages),
                 PackageVerb.Update => SortByName(_installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p))),
                 PackageVerb.Uninstall => SortByName(_installedPackages.Where(p => RowFilter.Matches(filter, p))),
-                _ => SortByName(_ignored.Entries.Select(CurrentEntry).Where(e => RowFilter.Matches(filter, e))),
+                _ => SortByName(_ignored.Entries.Where(e => RowFilter.Matches(filter, e))),
             };
 
             dataGridViewPackages.DataSource = list;
             // Binding auto-selects row 0; drop it so a refresh never leaves an unclicked row selected
             dataGridViewPackages.ClearSelection();
             dataGridViewPackages.Columns["Scope"]!.Visible = IsIgnoredTab;
+            dataGridViewPackages.Columns["Source"]!.Visible = !IsIgnoredTab;
             SetupContextMenu();
             ShowPackageCount();
             SyncActions();
@@ -472,46 +473,7 @@ namespace WinGetMGui
         private static List<T> SortByName<T>(IEnumerable<T> items) where T : IPackageRow =>
             items.OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList();
 
-        private IgnoredPackage CurrentEntry(IgnoredPackage entry)
-        {
-            var match = _installedPackages.Find(p => string.Equals(p.Id, entry.Id, StringComparison.OrdinalIgnoreCase));
-            string name = match is null || string.IsNullOrWhiteSpace(match.Name) ? entry.Name : match.Name;
-            string availableVersion = match?.AvailableVersion ?? string.Empty;
-            if (name == entry.Name && availableVersion == entry.AvailableVersion)
-                return entry;
-
-            return new IgnoredPackage
-            {
-                Scope = entry.Scope,
-                Id = entry.Id,
-                Name = name,
-                Version = entry.Version,
-                AvailableVersion = availableVersion,
-                Source = entry.Source,
-            };
-        }
-
         private Font _boldFont = null!;
-
-        private void DataGridViewPackages_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (!IsIgnoredTab || e.RowIndex < 0 ||
-                dataGridViewPackages.Columns[e.ColumnIndex].DataPropertyName != "AvailableVersion" ||
-                dataGridViewPackages.Rows[e.RowIndex].DataBoundItem is not IgnoredPackage entry)
-            {
-                return;
-            }
-
-            // Store entries mirror Version = AvailableVersion; only CurrentEntry clones can diverge.
-            bool updated = !string.IsNullOrWhiteSpace(entry.AvailableVersion) &&
-                !entry.AvailableVersion.Trim().Equals(entry.Version.Trim(), StringComparison.OrdinalIgnoreCase);
-            if (updated)
-            {
-                // Verified: e.CellStyle is non-null; setting Font affects only this cell,
-                // not the column default or sibling cells, and repeated calls are safe.
-                e.CellStyle!.Font = _boldFont;
-            }
-        }
 
         private void SetupContextMenu()
         {

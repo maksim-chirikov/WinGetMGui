@@ -19,10 +19,12 @@ namespace WinGetMGui
         public string Id { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
 
-        // The Version column on the Ignored tab shows the ignored (available-at-ignore-time) version.
-        // Not persisted: Load seeds it from AvailableVersion.
-        [JsonIgnore]
+        // The fixed version ignored at ignore-time; shown in the Version column on the Ignored tab.
         public string Version { get; init; } = string.Empty;
+
+        // Not saved: refreshed at runtime from the installed list. WhenWriting keeps old files (which
+        // stored the ignored version in AvailableVersion) readable.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWriting)]
         public string AvailableVersion { get; init; } = string.Empty;
         public string Source { get; init; } = string.Empty;
     }
@@ -55,15 +57,21 @@ namespace WinGetMGui
             {
                 var loaded = JsonSerializer.Deserialize<List<IgnoredPackage>>(File.ReadAllText(FilePath), StoreCommon.JsonOptions);
                 if (loaded is not null)
-                    // Version is [JsonIgnore]d: seed it from the stored AvailableVersion.
-                    _entries.AddRange(loaded.Select(e => new IgnoredPackage
+                    // New files store the fixed version in Version; it wins on load, and only
+                    // old Version-less files fall back to their AvailableVersion.
+                    // AvailableVersion is not set here; it is refreshed at runtime via UpdateFromInstalled.
+                    _entries.AddRange(loaded.Select(e =>
                     {
-                        Scope = e.Scope,
-                        Id = e.Id,
-                        Name = e.Name,
-                        Version = e.AvailableVersion,
-                        AvailableVersion = e.AvailableVersion,
-                        Source = e.Source
+                        string version = string.IsNullOrWhiteSpace(e.Version) ? e.AvailableVersion : e.Version;
+                        return new IgnoredPackage
+                        {
+                            Scope = e.Scope,
+                            Id = e.Id,
+                            Name = e.Name,
+                            Version = version,
+                            AvailableVersion = string.Empty,
+                            Source = e.Source
+                        };
                     }));
             }
             catch (JsonException)
@@ -87,7 +95,6 @@ namespace WinGetMGui
                 Id = package.Id,
                 Name = package.Name,
                 Version = package.AvailableVersion,
-                AvailableVersion = package.AvailableVersion,
                 Source = package.Source,
             });
             Changed = true;
@@ -101,11 +108,50 @@ namespace WinGetMGui
             return removed > 0;
         }
 
+        public void UpdateFromInstalled(IEnumerable<PackageInfo> installed)
+        {
+            // Build the dictionary manually to handle potential duplicate IDs safely.
+            var installedDict = new Dictionary<string, PackageInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in installed)
+            {
+                // Using the indexer [p.Id] ensures that if a duplicate ID exists, 
+                // the last one encountered simply overwrites the previous one instead of throwing.
+                installedDict[p.Id] = p;
+            }
+
+            for (int i = 0; i < _entries.Count; i++)
+            {
+                var entry = _entries[i];
+                installedDict.TryGetValue(entry.Id, out var match);
+
+                // Derived refresh: Name comes from the installed list (falls back to the stored
+                // snapshot); AvailableVersion shows only a version differing from the fixed
+                // Version (trimmed, like IsIgnored) - a package no longer installed shows none.
+                string name = !string.IsNullOrWhiteSpace(match?.Name) ? match!.Name : entry.Name;
+                string availableVersion = match is not null && !VersionEquals(match.AvailableVersion, entry.Version)
+                    ? match.AvailableVersion
+                    : string.Empty;
+
+                if (name == entry.Name && availableVersion == entry.AvailableVersion)
+                    continue;
+
+                _entries[i] = new IgnoredPackage
+                {
+                    Scope = entry.Scope,
+                    Id = entry.Id,
+                    Name = name,
+                    Version = entry.Version,
+                    AvailableVersion = availableVersion,
+                    Source = entry.Source
+                };
+            }
+        }
+
         public bool IsIgnored(PackageInfo package)
         {
             return _entries.Any(e => IdEquals(e.Id, package.Id) &&
                 (e.Scope == IgnoreScope.Package ||
-                    (e.Scope == IgnoreScope.Version && VersionEquals(e.AvailableVersion, package.AvailableVersion))));
+                    (e.Scope == IgnoreScope.Version && VersionEquals(e.Version, package.AvailableVersion))));
         }
 
         private static bool IdEquals(string a, string b) =>
