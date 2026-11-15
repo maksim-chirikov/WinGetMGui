@@ -478,16 +478,23 @@ namespace WinGetMGui
             var packages = await wingetService.GetInstalledPackagesAsync();
             _installedPackages = packages;
             _ignored.UpdateFromInstalled(_installedPackages);
+            RecalcIgnored();
             ApplyFilter();
+        }
+
+        // The Ignored flag feeds only the Update-tab filter and depends only on the ignore store plus each
+        // installed row's Id/AvailableVersion (fixed once the row is parsed). Recompute it when those change -
+        // an installed reload or an ignore/unignore - not on every search keystroke (ApplyFilter runs there).
+        private void RecalcIgnored()
+        {
+            foreach (var package in _installedPackages)
+                package.Ignored = _ignored.IsIgnored(package);
         }
 
         private void ApplyFilter()
         {
             if (IsSettingsTab)
                 return;
-
-            foreach (var package in _installedPackages)
-                package.Ignored = _ignored.IsIgnored(package);
 
             string filter = txtSearch.Text;
             System.Collections.IEnumerable list = ModeVerb switch
@@ -826,6 +833,7 @@ namespace WinGetMGui
         private void ApplyStoreAction(Action storeAction)
         {
             storeAction();
+            RecalcIgnored();
             ApplyFilter();
         }
 
