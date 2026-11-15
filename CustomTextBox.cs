@@ -2,22 +2,13 @@
 // Copyright (C) 2026 Maxim Chirikov
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-using System.Runtime.InteropServices;
 using Timer = System.Windows.Forms.Timer;
 
 namespace WinGetMGui
 {
     public class CustomTextBox : ToolStripTextBox
     {
-        private const int GWL_STYLE = -16;
-        private const int WS_CLIPCHILDREN = 0x02000000;
         private const int FilterDelayMs = 50;
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
         public event EventHandler? Cleared;
         public event EventHandler? Submitted;
@@ -52,9 +43,6 @@ namespace WinGetMGui
                 _clearLabel.MouseEnter += (s, e) => _clearLabel.ForeColor = Color.Black;
                 _clearLabel.MouseLeave += (s, e) => _clearLabel.ForeColor = Color.Gray;
 
-                textBox.HandleCreated += (s, e) => ApplyClipChildren(textBox);
-                ApplyClipChildren(textBox);
-
                 textBox.Controls.Add(_clearLabel);
                 _filterTimer = new Timer { Interval = FilterDelayMs };
                 _filterTimer.Tick += FilterTimer_Tick;
@@ -79,15 +67,6 @@ namespace WinGetMGui
             }
 
             base.OnUnsubscribeControlEvents(control);
-        }
-
-        private static void ApplyClipChildren(TextBox textBox)
-        {
-            if (!textBox.IsHandleCreated)
-                return;
-
-            var style = GetWindowLong(textBox.Handle, GWL_STYLE);
-            SetWindowLong(textBox.Handle, GWL_STYLE, style | WS_CLIPCHILDREN);
         }
 
         private void TextBox_TextChanged(object? sender, EventArgs e)
