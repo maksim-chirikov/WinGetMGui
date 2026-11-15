@@ -55,23 +55,46 @@ namespace WinGetMGui
         private CheckBox chkDisableInteractivity = default!;
         private CheckBox chkWait = default!;
 
-        private static class ActionNames
+        private sealed class ActionName
         {
-            internal const string Search = "Search";
-            internal const string ShowInfo = "Show";
-            internal const string Refresh = "Refresh";
-            internal const string Unignore = "Unignore";
-            internal const string NoAction = "No action";
-            internal const string IgnoreVersion = "Ignore version";
-            internal const string IgnorePackage = "Ignore package";
-            internal const string CopyCommandLine = "Copy command line";
+            public string Name { get; }
+            public string Caption { get; }
+            public string? KeyHint { get; }
+            public Keys? Key { get; }
+
+            public ActionName(string name, string caption, string? keyHint = null, Keys? key = null)
+            {
+                Name = name;
+                Caption = caption;
+                KeyHint = keyHint;
+                Key = key;
+            }
+
+            public string ToolTip
+            {
+                get
+                {
+                    if (string.IsNullOrEmpty(KeyHint))
+                        return Caption;
+                    return string.IsNullOrEmpty(Caption) ? KeyHint : $"{Caption} ({KeyHint})";
+                }
+            }
+
+            public static implicit operator string(ActionName action) => action.Caption;
         }
 
-        private static class KeyHints
+        private static class Actions
         {
-            internal const string CtrlF = "Ctrl+F";
-            internal const string Delete = "Delete";
-            internal const string RefreshKey = "F5";
+            internal static readonly ActionName Search = new("Search", "Search");
+            internal static readonly ActionName ShowInfo = new("ShowInfo", "Show");
+            internal static readonly ActionName Refresh = new("Refresh", "Refresh", "F5", Keys.F5);
+            internal static readonly ActionName Unignore = new("Unignore", "Unignore", "Delete", Keys.Delete);
+            internal static readonly ActionName NoAction = new("NoAction", "No action");
+            internal static readonly ActionName IgnoreVersion = new("IgnoreVersion", "Ignore version");
+            internal static readonly ActionName IgnorePackage = new("IgnorePackage", "Ignore package");
+            internal static readonly ActionName CopyCommandLine = new("CopyCommandLine", "Copy command line");
+
+            internal static readonly ActionName SearchFocus = new("SearchFocus", "", "Ctrl+F", Keys.Control | Keys.F);
         }
 
         public MainForm()
@@ -99,14 +122,14 @@ namespace WinGetMGui
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == (Keys.Control | Keys.F) && IsGridTab && txtSearch.Enabled && txtSearch.TextBox is TextBox box)
+            if (keyData == Actions.SearchFocus.Key && IsGridTab && txtSearch.Enabled && txtSearch.TextBox is TextBox box)
             {
                 box.Focus();
                 box.SelectAll();
                 return true;
             }
 
-            if (keyData == Keys.F5 && !_busy && IsGridTab)
+            if (keyData == Actions.Refresh.Key && !_busy && IsGridTab)
             {
                 BtnRefresh_Click(this, EventArgs.Empty);
                 return true;
@@ -179,11 +202,11 @@ namespace WinGetMGui
             txtSearch.Cleared += TxtSearch_Cleared;
             txtSearch.Submitted += BtnSearch_Click;
             txtSearch.FilterTextChanged += TxtSearch_TextChanged;
-            txtSearch.ToolTipText = KeyHints.CtrlF;
+            txtSearch.ToolTipText = Actions.SearchFocus.ToolTip;
             toolStrip.Items.Add(txtSearch);
 
             // Search Button
-            btnSearch = new ToolStripButton(ActionNames.Search);
+            btnSearch = new ToolStripButton(Actions.Search);
             btnSearch.Click += BtnSearch_Click;
             toolStrip.Items.Add(btnSearch);
 
@@ -220,20 +243,20 @@ namespace WinGetMGui
             toolStrip.Items.Add(btnAction);
 
             // ShowInfo button (label "Show"; grid tabs, selected row): winget show details in a modal window; run by grid double-click
-            btnShowInfo = new ToolStripButton(ActionNames.ShowInfo);
+            btnShowInfo = new ToolStripButton(Actions.ShowInfo);
             btnShowInfo.Click += BtnShowInfo_Click;
             toolStrip.Items.Add(btnShowInfo);
 
             // Ignore actions (Update tab only): same rules as the context menu items
-            btnIgnoreVersion = new ToolStripButton(ActionNames.IgnoreVersion);
+            btnIgnoreVersion = new ToolStripButton(Actions.IgnoreVersion);
             btnIgnoreVersion.Click += (s, e) => IgnoreSelected(IgnoreScope.Version);
-            btnIgnorePackage = new ToolStripButton(ActionNames.IgnorePackage);
+            btnIgnorePackage = new ToolStripButton(Actions.IgnorePackage);
             btnIgnorePackage.Click += (s, e) => IgnoreSelected(IgnoreScope.Package);
             toolStrip.Items.Add(btnIgnoreVersion);
             toolStrip.Items.Add(btnIgnorePackage);
 
-            btnRefresh = new ToolStripButton(ActionNames.Refresh);
-            btnRefresh.ToolTipText = $"{ActionNames.Refresh} ({KeyHints.RefreshKey})";
+            btnRefresh = new ToolStripButton(Actions.Refresh);
+            btnRefresh.ToolTipText = Actions.Refresh.ToolTip;
             btnRefresh.Click += BtnRefresh_Click;
             toolStrip.Items.Add(btnRefresh);
 
@@ -382,8 +405,8 @@ namespace WinGetMGui
             bool idle = !_busy;
             bool installMode = IsInstallTab;
 
-            btnAction.Text = IsIgnoredTab ? ActionNames.Unignore : ModeVerb is null ? ActionNames.NoAction : $"{ModeVerb}";
-            btnAction.ToolTipText = IsIgnoredTab ? $"{ActionNames.Unignore} ({KeyHints.Delete})" : string.Empty;
+            btnAction.Text = IsIgnoredTab ? Actions.Unignore : ModeVerb is null ? Actions.NoAction : $"{ModeVerb}";
+            btnAction.ToolTipText = IsIgnoredTab ? Actions.Unignore.ToolTip : string.Empty;
             btnAction.Enabled = (idle && IsIgnoredTab)
                 ? dataGridViewPackages.SelectedRows.Count > 0
                 : idle && ModeVerb is not null && package is not null;
@@ -481,9 +504,9 @@ namespace WinGetMGui
 
             if (IsIgnoredTab)
             {
-                _contextMenu.Items.Add(ActionNames.Unignore, null, (s, e) => UnignoreSelected());
+                _contextMenu.Items.Add(Actions.Unignore, null, (s, e) => UnignoreSelected());
                 _contextMenu.Items.Add(new ToolStripSeparator());
-                _contextMenu.Items.Add(ActionNames.ShowInfo, null, async (s, e) => await ShowInfoSelected());
+                _contextMenu.Items.Add(Actions.ShowInfo, null, async (s, e) => await ShowInfoSelected());
                 return;
             }
 
@@ -493,17 +516,17 @@ namespace WinGetMGui
             _contextMenu.Items.Add(verb.ToString(), null, async (s, e) => await TryStart(verb));
 
             _contextMenu.Items.Add(new ToolStripSeparator());
-            _contextMenu.Items.Add(ActionNames.ShowInfo, null, async (s, e) => await ShowInfoSelected());
+            _contextMenu.Items.Add(Actions.ShowInfo, null, async (s, e) => await ShowInfoSelected());
 
             if (verb == PackageVerb.Update)
             {
                 _contextMenu.Items.Add(new ToolStripSeparator());
-                _contextMenu.Items.Add(ActionNames.IgnoreVersion, null, (s, e) => IgnoreSelected(IgnoreScope.Version));
-                _contextMenu.Items.Add(ActionNames.IgnorePackage, null, (s, e) => IgnoreSelected(IgnoreScope.Package));
+                _contextMenu.Items.Add(Actions.IgnoreVersion, null, (s, e) => IgnoreSelected(IgnoreScope.Version));
+                _contextMenu.Items.Add(Actions.IgnorePackage, null, (s, e) => IgnoreSelected(IgnoreScope.Package));
             }
 
             _contextMenu.Items.Add(new ToolStripSeparator());
-            _contextMenu.Items.Add(ActionNames.CopyCommandLine, null, (s, e) => CopyCommandLine(verb));
+            _contextMenu.Items.Add(Actions.CopyCommandLine, null, (s, e) => CopyCommandLine(verb));
         }
 
         private void ContextMenu_Opening(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -795,7 +818,7 @@ namespace WinGetMGui
 
         private void DataGridViewPackages_KeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Delete && IsIgnoredTab)
+            if (e.KeyCode == Actions.Unignore.Key && IsIgnoredTab)
             {
                 e.SuppressKeyPress = true;
                 UnignoreSelected();
