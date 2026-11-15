@@ -20,7 +20,7 @@ namespace WinGetMGui
         private TabPage _uninstallTab = default!;
         private TabPage _ignoredTab = default!;
         private TabPage _settingsTab = default!;
-        private (Keys Key, TabPage Tab)[] _tabShortcuts = default!;
+        private Dictionary<TabPage, CaptionInfo> _tabCaptions = default!;
         private ToolTip _tabToolTips = default!;
         private TabPage? _hoveredTab;
         private ToolStripButton btnSearch = default!;
@@ -55,44 +55,48 @@ namespace WinGetMGui
         private CheckBox chkDisableInteractivity = default!;
         private CheckBox chkWait = default!;
 
-        private sealed class ActionName
+        private sealed class CaptionInfo
         {
             public string Caption { get; }
             public string? KeyHint { get; }
             public Keys? Key { get; }
 
-            public ActionName(string caption, string? keyHint = null, Keys? key = null)
+            public CaptionInfo(string caption, string? keyHint = null, Keys? key = null)
             {
                 Caption = caption;
                 KeyHint = keyHint;
                 Key = key;
             }
 
-            public string ToolTip
-            {
-                get
-                {
-                    if (string.IsNullOrEmpty(KeyHint))
-                        return Caption;
-                    return string.IsNullOrEmpty(Caption) ? KeyHint : $"{Caption} ({KeyHint})";
-                }
-            }
+            public string ToolTip =>
+                string.IsNullOrEmpty(KeyHint) ? Caption
+                : string.IsNullOrEmpty(Caption) ? KeyHint
+                : $"{Caption} ({KeyHint})";
 
-            public static implicit operator string(ActionName action) => action.Caption;
+            public static implicit operator string(CaptionInfo caption) => caption.Caption;
         }
 
-        private static class Actions
+        private static class ActionInfo
         {
-            internal static readonly ActionName Search = new("Search");
-            internal static readonly ActionName ShowInfo = new("Show");
-            internal static readonly ActionName Refresh = new("Refresh", "F5", Keys.F5);
-            internal static readonly ActionName Unignore = new("Unignore", "Delete", Keys.Delete);
-            internal static readonly ActionName NoAction = new("No action");
-            internal static readonly ActionName IgnoreVersion = new("Ignore version");
-            internal static readonly ActionName IgnorePackage = new("Ignore package");
-            internal static readonly ActionName CopyCommandLine = new("Copy command line");
+            internal static readonly CaptionInfo Search = new("Search");
+            internal static readonly CaptionInfo ShowInfo = new("Show");
+            internal static readonly CaptionInfo Refresh = new("Refresh", "F5", Keys.F5);
+            internal static readonly CaptionInfo Unignore = new("Unignore", "Delete", Keys.Delete);
+            internal static readonly CaptionInfo NoAction = new("No action");
+            internal static readonly CaptionInfo IgnoreVersion = new("Ignore version");
+            internal static readonly CaptionInfo IgnorePackage = new("Ignore package");
+            internal static readonly CaptionInfo CopyCommandLine = new("Copy command line");
 
-            internal static readonly ActionName SearchFocus = new("", "Ctrl+F", Keys.Control | Keys.F);
+            internal static readonly CaptionInfo SearchFocus = new("", "Ctrl+F", Keys.Control | Keys.F);
+        }
+
+        private static class TabInfo
+        {
+            internal static readonly CaptionInfo Update = new("Update", "F1", Keys.F1);
+            internal static readonly CaptionInfo Install = new("Install", "F2", Keys.F2);
+            internal static readonly CaptionInfo Uninstall = new("Uninstall", "F3", Keys.F3);
+            internal static readonly CaptionInfo Ignored = new("Ignored", "F4", Keys.F4);
+            internal static readonly CaptionInfo Settings = new("Settings");
         }
 
         public MainForm()
@@ -120,14 +124,14 @@ namespace WinGetMGui
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Actions.SearchFocus.Key && IsGridTab && txtSearch.Enabled && txtSearch.TextBox is TextBox box)
+            if (keyData == ActionInfo.SearchFocus.Key && IsGridTab && txtSearch.Enabled && txtSearch.TextBox is TextBox box)
             {
                 box.Focus();
                 box.SelectAll();
                 return true;
             }
 
-            if (keyData == Actions.Refresh.Key && !_busy && IsGridTab)
+            if (keyData == ActionInfo.Refresh.Key && !_busy && IsGridTab)
             {
                 BtnRefresh_Click(this, EventArgs.Empty);
                 return true;
@@ -140,11 +144,11 @@ namespace WinGetMGui
                 return true;
             }
 
-            foreach (var (key, tab) in _tabShortcuts)
+            foreach (var (page, caption) in _tabCaptions)
             {
-                if (keyData == key)
+                if (keyData == caption.Key)
                 {
-                    tabs.SelectedTab = tab;
+                    tabs.SelectedTab = page;
                     return true;
                 }
             }
@@ -167,15 +171,23 @@ namespace WinGetMGui
                 ItemSize = new Size(120, 28),
                 Height = 33
             };
-            _updateTab = new TabPage("Update");
-            _installTab = new TabPage("Install");
-            _uninstallTab = new TabPage("Uninstall");
-            _ignoredTab = new TabPage("Ignored");
-            _settingsTab = new TabPage("Settings");
+            _updateTab = new TabPage(TabInfo.Update);
+            _installTab = new TabPage(TabInfo.Install);
+            _uninstallTab = new TabPage(TabInfo.Uninstall);
+            _ignoredTab = new TabPage(TabInfo.Ignored);
+            _settingsTab = new TabPage(TabInfo.Settings);
             tabs.TabPages.AddRange(new[] { _updateTab, _installTab, _uninstallTab, _ignoredTab, _settingsTab });
             tabs.SelectedIndexChanged += Tabs_SelectedIndexChanged;
 
-            _tabShortcuts = new[] { (Keys.F1, _updateTab), (Keys.F2, _installTab), (Keys.F3, _uninstallTab), (Keys.F4, _ignoredTab) };
+            // One entry per tab: caption + its F1-F4 key (the Settings tab has no key, so it has no shortcut)
+            _tabCaptions = new Dictionary<TabPage, CaptionInfo>
+            {
+                [_updateTab] = TabInfo.Update,
+                [_installTab] = TabInfo.Install,
+                [_uninstallTab] = TabInfo.Uninstall,
+                [_ignoredTab] = TabInfo.Ignored,
+                [_settingsTab] = TabInfo.Settings
+            };
             _tabToolTips = new ToolTip { AutoPopDelay = 30_000, ShowAlways = true };
             components.Add(_tabToolTips);
             tabs.MouseMove += Tabs_MouseMove;
@@ -200,11 +212,11 @@ namespace WinGetMGui
             txtSearch.Cleared += TxtSearch_Cleared;
             txtSearch.Submitted += BtnSearch_Click;
             txtSearch.FilterTextChanged += TxtSearch_TextChanged;
-            txtSearch.ToolTipText = Actions.SearchFocus.ToolTip;
+            txtSearch.ToolTipText = ActionInfo.SearchFocus.ToolTip;
             toolStrip.Items.Add(txtSearch);
 
             // Search Button
-            btnSearch = new ToolStripButton(Actions.Search);
+            btnSearch = new ToolStripButton(ActionInfo.Search);
             btnSearch.Click += BtnSearch_Click;
             toolStrip.Items.Add(btnSearch);
 
@@ -241,20 +253,20 @@ namespace WinGetMGui
             toolStrip.Items.Add(btnAction);
 
             // ShowInfo button (label "Show"; grid tabs, selected row): winget show details in a modal window; run by grid double-click
-            btnShowInfo = new ToolStripButton(Actions.ShowInfo);
+            btnShowInfo = new ToolStripButton(ActionInfo.ShowInfo);
             btnShowInfo.Click += BtnShowInfo_Click;
             toolStrip.Items.Add(btnShowInfo);
 
             // Ignore actions (Update tab only): same rules as the context menu items
-            btnIgnoreVersion = new ToolStripButton(Actions.IgnoreVersion);
+            btnIgnoreVersion = new ToolStripButton(ActionInfo.IgnoreVersion);
             btnIgnoreVersion.Click += (s, e) => IgnoreSelected(IgnoreScope.Version);
-            btnIgnorePackage = new ToolStripButton(Actions.IgnorePackage);
+            btnIgnorePackage = new ToolStripButton(ActionInfo.IgnorePackage);
             btnIgnorePackage.Click += (s, e) => IgnoreSelected(IgnoreScope.Package);
             toolStrip.Items.Add(btnIgnoreVersion);
             toolStrip.Items.Add(btnIgnorePackage);
 
-            btnRefresh = new ToolStripButton(Actions.Refresh);
-            btnRefresh.ToolTipText = Actions.Refresh.ToolTip;
+            btnRefresh = new ToolStripButton(ActionInfo.Refresh);
+            btnRefresh.ToolTipText = ActionInfo.Refresh.ToolTip;
             btnRefresh.Click += BtnRefresh_Click;
             toolStrip.Items.Add(btnRefresh);
 
@@ -403,8 +415,8 @@ namespace WinGetMGui
             bool idle = !_busy;
             bool installMode = IsInstallTab;
 
-            btnAction.Text = IsIgnoredTab ? Actions.Unignore : ModeVerb is null ? Actions.NoAction : $"{ModeVerb}";
-            btnAction.ToolTipText = IsIgnoredTab ? Actions.Unignore.ToolTip : string.Empty;
+            btnAction.Text = IsIgnoredTab ? ActionInfo.Unignore : ModeVerb is null ? ActionInfo.NoAction : $"{ModeVerb}";
+            btnAction.ToolTipText = IsIgnoredTab ? ActionInfo.Unignore.ToolTip : string.Empty;
             btnAction.Enabled = (idle && IsIgnoredTab)
                 ? dataGridViewPackages.SelectedRows.Count > 0
                 : idle && ModeVerb is not null && package is not null;
@@ -502,9 +514,9 @@ namespace WinGetMGui
 
             if (IsIgnoredTab)
             {
-                _contextMenu.Items.Add(Actions.Unignore, null, (s, e) => UnignoreSelected());
+                _contextMenu.Items.Add(ActionInfo.Unignore, null, (s, e) => UnignoreSelected());
                 _contextMenu.Items.Add(new ToolStripSeparator());
-                _contextMenu.Items.Add(Actions.ShowInfo, null, async (s, e) => await ShowInfoSelected());
+                _contextMenu.Items.Add(ActionInfo.ShowInfo, null, async (s, e) => await ShowInfoSelected());
                 return;
             }
 
@@ -514,17 +526,17 @@ namespace WinGetMGui
             _contextMenu.Items.Add(verb.ToString(), null, async (s, e) => await TryStart(verb));
 
             _contextMenu.Items.Add(new ToolStripSeparator());
-            _contextMenu.Items.Add(Actions.ShowInfo, null, async (s, e) => await ShowInfoSelected());
+            _contextMenu.Items.Add(ActionInfo.ShowInfo, null, async (s, e) => await ShowInfoSelected());
 
             if (verb == PackageVerb.Update)
             {
                 _contextMenu.Items.Add(new ToolStripSeparator());
-                _contextMenu.Items.Add(Actions.IgnoreVersion, null, (s, e) => IgnoreSelected(IgnoreScope.Version));
-                _contextMenu.Items.Add(Actions.IgnorePackage, null, (s, e) => IgnoreSelected(IgnoreScope.Package));
+                _contextMenu.Items.Add(ActionInfo.IgnoreVersion, null, (s, e) => IgnoreSelected(IgnoreScope.Version));
+                _contextMenu.Items.Add(ActionInfo.IgnorePackage, null, (s, e) => IgnoreSelected(IgnoreScope.Package));
             }
 
             _contextMenu.Items.Add(new ToolStripSeparator());
-            _contextMenu.Items.Add(Actions.CopyCommandLine, null, (s, e) => CopyCommandLine(verb));
+            _contextMenu.Items.Add(ActionInfo.CopyCommandLine, null, (s, e) => CopyCommandLine(verb));
         }
 
         private void ContextMenu_Opening(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -610,14 +622,14 @@ namespace WinGetMGui
                 return;
 
             _hoveredTab = hovered;
-            if (hovered is null || TabKeyText(hovered) is not string key)
+            if (hovered is null || !_tabCaptions.TryGetValue(hovered, out var caption))
             {
                 _tabToolTips.Hide(tabs);
                 return;
             }
 
             Rectangle rect = tabs.GetTabRect(tabs.TabPages.IndexOf(hovered));
-            _tabToolTips.Show($"{hovered.Text} ({key})", tabs, rect.Left, rect.Bottom);
+            _tabToolTips.Show(caption.ToolTip, tabs, rect.Left, rect.Bottom);
         }
 
         private void Tabs_MouseLeave(object? sender, EventArgs e)
@@ -631,18 +643,6 @@ namespace WinGetMGui
             for (int index = 0; index < tabs.TabPages.Count; index++)
                 if (tabs.GetTabRect(index).Contains(point))
                     return tabs.TabPages[index];
-
-            return null;
-        }
-
-        private string? TabKeyText(TabPage? tab)
-        {
-            if (tab is null)
-                return null;
-
-            foreach (var (key, shortcutTab) in _tabShortcuts)
-                if (shortcutTab == tab)
-                    return key.ToString();
 
             return null;
         }
@@ -816,7 +816,7 @@ namespace WinGetMGui
 
         private void DataGridViewPackages_KeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Actions.Unignore.Key && IsIgnoredTab)
+            if (e.KeyCode == ActionInfo.Unignore.Key && IsIgnoredTab)
             {
                 e.SuppressKeyPress = true;
                 UnignoreSelected();
