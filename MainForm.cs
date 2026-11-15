@@ -292,6 +292,7 @@ namespace WinGetMGui
             dataGridViewPackages.KeyDown += DataGridViewPackages_KeyDown;
 
             _contextMenu = new ContextMenuStrip();
+            components.Add(_contextMenu);
             _contextMenu.Opening += ContextMenu_Opening;
             dataGridViewPackages.ContextMenuStrip = _contextMenu;
 
