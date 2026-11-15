@@ -34,11 +34,7 @@ namespace WinGetMGui
         private ToolStripMenuItem scopeDefaultItem = default!;
         private ToolStripMenuItem scopeUserItem = default!;
         private ToolStripMenuItem scopeMachineItem = default!;
-        private ToolStripMenuItem searchByDefaultItem = default!;
-        private ToolStripMenuItem searchByNameItem = default!;
-        private ToolStripMenuItem searchByIdItem = default!;
-        private ToolStripMenuItem searchByMonikerItem = default!;
-        private ToolStripMenuItem searchByTagItem = default!;
+        private Dictionary<SearchBy, ToolStripMenuItem> _searchByItems = default!;
         private List<PackageInfo> _installedPackages = new();
         private List<PackageInfo> _catalogPackages = new();
         private IgnoredPackagesStore _ignored = default!;
@@ -222,16 +218,17 @@ namespace WinGetMGui
 
             // SearchBy selector (Install tab only): the query option is passed to winget search, no filtering in code
             btnSearchBy = new ToolStripDropDownButton("SearchBy");
-            searchByDefaultItem = new ToolStripMenuItem("Default", null, SearchByItem_Click) { Checked = true };
-            searchByNameItem = new ToolStripMenuItem("Name", null, SearchByItem_Click);
-            searchByIdItem = new ToolStripMenuItem("ID", null, SearchByItem_Click);
-            searchByMonikerItem = new ToolStripMenuItem("Moniker", null, SearchByItem_Click);
-            searchByTagItem = new ToolStripMenuItem("Tag", null, SearchByItem_Click);
-            btnSearchBy.DropDownItems.Add(searchByDefaultItem);
-            btnSearchBy.DropDownItems.Add(searchByNameItem);
-            btnSearchBy.DropDownItems.Add(searchByIdItem);
-            btnSearchBy.DropDownItems.Add(searchByMonikerItem);
-            btnSearchBy.DropDownItems.Add(searchByTagItem);
+            _searchByItems = new Dictionary<SearchBy, ToolStripMenuItem>();
+            foreach (var searchBy in Enum.GetValues<SearchBy>())
+            {
+                var item = new ToolStripMenuItem(searchBy.ToString(), null, SearchByItem_Click)
+                {
+                    Checked = searchBy == SearchBy.Default,
+                    Tag = searchBy,
+                };
+                _searchByItems[searchBy] = item;
+                btnSearchBy.DropDownItems.Add(item);
+            }
             btnSearchBy.Visible = false;
             toolStrip.Items.Add(btnSearchBy);
 
@@ -695,19 +692,14 @@ namespace WinGetMGui
         }
 
         private SearchBy SelectedSearchBy =>
-            searchByNameItem.Checked ? SearchBy.Name :
-            searchByIdItem.Checked ? SearchBy.Id :
-            searchByMonikerItem.Checked ? SearchBy.Moniker :
-            searchByTagItem.Checked ? SearchBy.Tag :
-            SearchBy.Default;
+            _searchByItems.First(kv => kv.Value.Checked).Key;
 
         private void SearchByItem_Click(object? sender, EventArgs e)
         {
-            searchByDefaultItem.Checked = sender == searchByDefaultItem;
-            searchByNameItem.Checked = sender == searchByNameItem;
-            searchByIdItem.Checked = sender == searchByIdItem;
-            searchByMonikerItem.Checked = sender == searchByMonikerItem;
-            searchByTagItem.Checked = sender == searchByTagItem;
+            if (sender is not ToolStripMenuItem clicked)
+                return;
+            foreach (var item in _searchByItems.Values)
+                item.Checked = ReferenceEquals(item, clicked);
         }
 
         private async Task TryStart(PackageVerb verb)
