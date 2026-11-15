@@ -23,6 +23,9 @@ namespace WinGetMGui
         private Dictionary<TabPage, CaptionInfo> _tabCaptions = default!;
         private ToolTip _tabToolTips = default!;
         private TabPage? _hoveredTab;
+        // The two grid columns whose visibility follows the tab; captured here so ApplyFilter does not look them up by name
+        private DataGridViewColumn _gridSourceColumn = default!;
+        private DataGridViewColumn _gridScopeColumn = default!;
         private ToolStripButton btnSearch = default!;
         private ToolStripButton btnShowInfo = default!;
         private ToolStripButton btnAction = default!;
@@ -374,11 +377,13 @@ namespace WinGetMGui
             dataGridViewPackages.Columns[idIdx].DataPropertyName = "Id";
 
             int sourceIdx = dataGridViewPackages.Columns.Add("Source", "Source");
-            dataGridViewPackages.Columns[sourceIdx].DataPropertyName = "Source";
+            _gridSourceColumn = dataGridViewPackages.Columns[sourceIdx];
+            _gridSourceColumn.DataPropertyName = "Source";
 
             int scopeIdx = dataGridViewPackages.Columns.Add("Scope", "Scope");
-            dataGridViewPackages.Columns[scopeIdx].DataPropertyName = "Scope";
-            dataGridViewPackages.Columns[scopeIdx].FillWeight = 100;
+            _gridScopeColumn = dataGridViewPackages.Columns[scopeIdx];
+            _gridScopeColumn.DataPropertyName = "Scope";
+            _gridScopeColumn.FillWeight = 100;
 
             // DataSource is a plain List: DataGridView's built-in column sorting (header click, F3) needs an
             // IBindingList and throws InvalidOperationException otherwise. Row order is owned by ApplyFilter (Name).
@@ -493,8 +498,8 @@ namespace WinGetMGui
             dataGridViewPackages.DataSource = list;
             // Binding auto-selects row 0; drop it so a refresh never leaves an unclicked row selected
             dataGridViewPackages.ClearSelection();
-            dataGridViewPackages.Columns["Scope"]!.Visible = IsIgnoredTab;
-            dataGridViewPackages.Columns["Source"]!.Visible = !IsIgnoredTab;
+            _gridSourceColumn.Visible = !IsIgnoredTab;
+            _gridScopeColumn.Visible = IsIgnoredTab;
             SetupContextMenu();
             ShowPackageCount();
             SyncActions();
