@@ -35,7 +35,7 @@ namespace WinGetMGui
             components = new System.ComponentModel.Container();
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1300, 644);
-            Text = "Winget Minimal GUI";
+            Text = ProductDisplayName;
             StartPosition = FormStartPosition.CenterScreen;
             Shown += MainForm_Shown_1;
             FormClosed += MainForm_FormClosed;

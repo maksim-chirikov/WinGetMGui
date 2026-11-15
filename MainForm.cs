@@ -14,6 +14,9 @@ namespace WinGetMGui
         private ToolStrip toolStrip = default!;
         private ToolStripStatusLabel statusLabel = default!;
         private StatusStrip statusStrip = default!;
+        // The product name shown in the title bar and the About box (not ProductName: Control has that member)
+        private const string ProductDisplayName = "WinGet Minimal GUI";
+
         private TabControl tabs = default!;
         private TabPage _updateTab = default!;
         private TabPage _installTab = default!;
