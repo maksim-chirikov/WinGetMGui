@@ -57,14 +57,12 @@ namespace WinGetMGui
 
         private sealed class ActionName
         {
-            public string Name { get; }
             public string Caption { get; }
             public string? KeyHint { get; }
             public Keys? Key { get; }
 
-            public ActionName(string name, string caption, string? keyHint = null, Keys? key = null)
+            public ActionName(string caption, string? keyHint = null, Keys? key = null)
             {
-                Name = name;
                 Caption = caption;
                 KeyHint = keyHint;
                 Key = key;
@@ -85,16 +83,16 @@ namespace WinGetMGui
 
         private static class Actions
         {
-            internal static readonly ActionName Search = new("Search", "Search");
-            internal static readonly ActionName ShowInfo = new("ShowInfo", "Show");
-            internal static readonly ActionName Refresh = new("Refresh", "Refresh", "F5", Keys.F5);
-            internal static readonly ActionName Unignore = new("Unignore", "Unignore", "Delete", Keys.Delete);
-            internal static readonly ActionName NoAction = new("NoAction", "No action");
-            internal static readonly ActionName IgnoreVersion = new("IgnoreVersion", "Ignore version");
-            internal static readonly ActionName IgnorePackage = new("IgnorePackage", "Ignore package");
-            internal static readonly ActionName CopyCommandLine = new("CopyCommandLine", "Copy command line");
+            internal static readonly ActionName Search = new("Search");
+            internal static readonly ActionName ShowInfo = new("Show");
+            internal static readonly ActionName Refresh = new("Refresh", "F5", Keys.F5);
+            internal static readonly ActionName Unignore = new("Unignore", "Delete", Keys.Delete);
+            internal static readonly ActionName NoAction = new("No action");
+            internal static readonly ActionName IgnoreVersion = new("Ignore version");
+            internal static readonly ActionName IgnorePackage = new("Ignore package");
+            internal static readonly ActionName CopyCommandLine = new("Copy command line");
 
-            internal static readonly ActionName SearchFocus = new("SearchFocus", "", "Ctrl+F", Keys.Control | Keys.F);
+            internal static readonly ActionName SearchFocus = new("", "Ctrl+F", Keys.Control | Keys.F);
         }
 
         public MainForm()
