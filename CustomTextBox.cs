@@ -23,9 +23,11 @@ namespace WinGetMGui
         public event EventHandler? Submitted;
         public event EventHandler? FilterTextChanged;
 
-        private Label? _clearLabel;
-        private TextBox? _textBox;
-        private Timer? _filterTimer;
+        // Assigned in OnSubscribeControlEvents, which is where every handler touching them is subscribed;
+        // OnUnsubscribeControlEvents unsubscribes them again, so they are never observed null.
+        private Label _clearLabel = default!;
+        private TextBox _textBox = default!;
+        private Timer _filterTimer = default!;
 
         protected override void OnSubscribeControlEvents(Control? control)
         {
@@ -66,18 +68,14 @@ namespace WinGetMGui
 
         protected override void OnUnsubscribeControlEvents(Control? control)
         {
-            if (control is TextBox textBox && _clearLabel is not null)
+            if (control is TextBox textBox)
             {
                 textBox.TextChanged -= TextBox_TextChanged;
                 textBox.Resize -= TextBox_Resize;
                 textBox.KeyDown -= TextBox_KeyDown;
                 textBox.Controls.Remove(_clearLabel);
                 _clearLabel.Dispose();
-                _clearLabel = null;
-                _textBox = null;
-
-                _filterTimer?.Dispose();
-                _filterTimer = null;
+                _filterTimer.Dispose();
             }
 
             base.OnUnsubscribeControlEvents(control);
@@ -96,16 +94,13 @@ namespace WinGetMGui
         {
             UpdateClearButton();
 
-            if (_filterTimer is null)
-                return;
-
             _filterTimer.Stop();
             _filterTimer.Start();
         }
 
         private void FilterTimer_Tick(object? sender, EventArgs e)
         {
-            _filterTimer?.Stop();
+            _filterTimer.Stop();
             FilterTextChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -122,9 +117,6 @@ namespace WinGetMGui
 
         private void ClearLabel_Click(object? sender, EventArgs e)
         {
-            if (_textBox is null)
-                return;
-
             _textBox.Clear();
             _textBox.Focus();
             Cleared?.Invoke(this, EventArgs.Empty);
@@ -132,9 +124,6 @@ namespace WinGetMGui
 
         private void UpdateClearButton()
         {
-            if (_textBox is null || _clearLabel is null)
-                return;
-
             _clearLabel.Size = new Size(18, _textBox.ClientSize.Height);
             _clearLabel.Location = new Point(_textBox.ClientSize.Width - _clearLabel.Width - 1, 0);
             _clearLabel.Visible = _textBox.TextLength > 0;

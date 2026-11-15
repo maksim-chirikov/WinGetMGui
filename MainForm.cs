@@ -516,7 +516,7 @@ namespace WinGetMGui
         }
 
         private static List<T> SortByName<T>(IEnumerable<T> items) where T : IPackageRow =>
-            items.OrderBy(p => p.Name ?? "", StringComparer.OrdinalIgnoreCase).ToList();
+            items.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
         private Font _boldFont = null!;
 
