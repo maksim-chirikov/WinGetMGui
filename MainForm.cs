@@ -395,18 +395,23 @@ namespace WinGetMGui
                 column.SortMode = DataGridViewColumnSortMode.NotSortable;
         }
 
-        private PackageVerb? ModeVerb =>
+        private PackageVerb? GetModeVerb() =>
             IsUpdateTab ? PackageVerb.Update :
             IsInstallTab ? PackageVerb.Install :
             IsUninstallTab ? PackageVerb.Uninstall :
             null;
 
-        private PackageInfo? GetSelectedPackage()
-        {
-            return dataGridViewPackages.SelectedRows.Count > 0
-                ? dataGridViewPackages.SelectedRows[0].DataBoundItem as PackageInfo
+        // The selected grid row is read only through these three: each tab binds one row model
+        // (Update/Install/Uninstall -> PackageInfo, Ignored -> IgnoredPackage), so IPackageRow is
+        // the shape every action needs, and the tab-specific accessors narrow it without a cast.
+        private IPackageRow? GetSelectedRow() =>
+            dataGridViewPackages.SelectedRows.Count > 0
+                ? dataGridViewPackages.SelectedRows[0].DataBoundItem as IPackageRow
                 : null;
-        }
+
+        private PackageInfo? GetSelectedPackage() => GetSelectedRow() as PackageInfo;
+
+        private IgnoredPackage? GetSelectedIgnored() => GetSelectedRow() as IgnoredPackage;
 
         private bool IsUpdateTab => tabs.SelectedTab == _updateTab;
         private bool IsInstallTab => tabs.SelectedTab == _installTab;
@@ -417,24 +422,25 @@ namespace WinGetMGui
 
         private void SyncActions()
         {
-            var package = GetSelectedPackage();
             bool idle = !_busy;
             bool installMode = IsInstallTab;
+            bool updateMode = IsUpdateTab;
+            bool rowSelected = GetSelectedRow() is not null;
+            PackageVerb? verb = GetModeVerb();
 
-            btnAction.Text = IsIgnoredTab ? ActionInfo.Unignore : ModeVerb is null ? ActionInfo.NoAction : $"{ModeVerb}";
+            btnAction.Text = IsIgnoredTab ? ActionInfo.Unignore : verb is null ? ActionInfo.NoAction : $"{verb}";
             btnAction.ToolTipText = IsIgnoredTab ? ActionInfo.Unignore.ToolTip : string.Empty;
-            btnAction.Enabled = (idle && IsIgnoredTab)
-                ? dataGridViewPackages.SelectedRows.Count > 0
-                : idle && ModeVerb is not null && package is not null;
+            btnAction.Enabled = idle && (IsIgnoredTab
+                ? GetSelectedIgnored() is not null
+                : verb is not null && GetSelectedPackage() is not null);
 
             txtSearch.Enabled = idle;
             btnSearch.Enabled = idle && installMode;
-            btnShowInfo.Enabled = idle && IsGridTab && dataGridViewPackages.SelectedRows.Count > 0;
+            btnShowInfo.Enabled = idle && IsGridTab && rowSelected;
             btnScope.Visible = installMode;
             btnSearchBy.Visible = installMode;
-            bool updateMode = IsUpdateTab;
             btnIgnoreVersion.Visible = btnIgnorePackage.Visible = updateMode;
-            btnIgnoreVersion.Enabled = btnIgnorePackage.Enabled = idle && updateMode && dataGridViewPackages.SelectedRows.Count > 0;
+            btnIgnoreVersion.Enabled = btnIgnorePackage.Enabled = idle && updateMode && rowSelected;
             btnRefresh.Enabled = idle;
         }
 
@@ -498,7 +504,7 @@ namespace WinGetMGui
                 return;
 
             string filter = txtSearch.Text;
-            System.Collections.IEnumerable list = ModeVerb switch
+            System.Collections.IEnumerable list = GetModeVerb() switch
             {
                 PackageVerb.Install => SortByName(_catalogPackages),
                 PackageVerb.Update => SortByName(_installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p))),
@@ -533,7 +539,7 @@ namespace WinGetMGui
                 return;
             }
 
-            if (ModeVerb is not PackageVerb verb)
+            if (GetModeVerb() is not PackageVerb verb)
                 return;
 
             _contextMenu.Items.Add(verb.ToString(), null, async (s, e) => await TryStart(verb));
@@ -561,8 +567,7 @@ namespace WinGetMGui
             }
 
             e.Cancel = IsIgnoredTab
-                ? dataGridViewPackages.SelectedRows.Count == 0 ||
-                    dataGridViewPackages.SelectedRows[0].DataBoundItem is not IgnoredPackage
+                ? GetSelectedIgnored() is null
                 : GetSelectedPackage() is null;
         }
 
@@ -671,7 +676,7 @@ namespace WinGetMGui
         private async Task SearchPackages()
         {
             statusLabel.Text = "Searching packages...";
-            var packages = await wingetService.SearchPackagesAsync(txtSearch.Text, SelectedSearchBy);
+            var packages = await wingetService.SearchPackagesAsync(txtSearch.Text, GetSelectedSearchBy());
             _catalogPackages = packages;
             ApplyFilter();
         }
@@ -684,7 +689,7 @@ namespace WinGetMGui
                 return;
             }
 
-            if (ModeVerb is not PackageVerb verb)
+            if (GetModeVerb() is not PackageVerb verb)
                 return;
 
             await TryStart(verb);
@@ -695,7 +700,7 @@ namespace WinGetMGui
             await ShowInfoSelected();
         }
 
-        private PackageScope SelectedScope =>
+        private PackageScope GetSelectedScope() =>
             scopeUserItem.Checked ? PackageScope.User :
             scopeMachineItem.Checked ? PackageScope.Machine :
             PackageScope.Default;
@@ -707,7 +712,7 @@ namespace WinGetMGui
             scopeMachineItem.Checked = sender == scopeMachineItem;
         }
 
-        private SearchBy SelectedSearchBy =>
+        private SearchBy GetSelectedSearchBy() =>
             _searchByItems.First(kv => kv.Value.Checked).Key;
 
         private void SearchByItem_Click(object? sender, EventArgs e)
@@ -733,18 +738,19 @@ namespace WinGetMGui
         private async Task RunVerbAsync(PackageVerb verb, PackageInfo package)
         {
             statusLabel.Text = $"{verb.ProgressStatus()} {package.Name}...";
-            await wingetService.RunPackageVerbAsync(verb, package.Id, SelectedScope);
+            await wingetService.RunPackageVerbAsync(verb, package.Id, GetSelectedScope());
             await LoadPackages();
         }
 
         private void CopyCommandLine(PackageVerb verb)
         {
-            if (GetSelectedPackage() is not PackageInfo package)
+            var package = GetSelectedPackage();
+            if (package is null)
                 return;
 
             try
             {
-                Clipboard.SetText(wingetService.BuildVerbCommandLine(verb, package.Id, SelectedScope));
+                Clipboard.SetText(wingetService.BuildVerbCommandLine(verb, package.Id, GetSelectedScope()));
             }
             catch (Exception ex)
             {
@@ -754,25 +760,11 @@ namespace WinGetMGui
 
         private async Task ShowInfoSelected()
         {
-            if (_busy || dataGridViewPackages.SelectedRows.Count == 0)
+            var row = GetSelectedRow();
+            if (_busy || row is null || row.Id.Length == 0)
                 return;
 
-            string name = dataGridViewPackages.SelectedRows[0].DataBoundItem switch
-            {
-                PackageInfo package => package.Name,
-                IgnoredPackage entry => entry.Name,
-                _ => string.Empty,
-            };
-            string id = dataGridViewPackages.SelectedRows[0].DataBoundItem switch
-            {
-                PackageInfo package => package.Id,
-                IgnoredPackage entry => entry.Id,
-                _ => string.Empty,
-            };
-            if (id.Length == 0)
-                return;
-
-            await ShowInfoAsync(name, id);
+            await ShowInfoAsync(row.Name, row.Id);
         }
 
         private async Task ShowInfoAsync(string name, string id)
@@ -840,7 +832,8 @@ namespace WinGetMGui
 
         private void IgnoreSelected(IgnoreScope scope)
         {
-            if (GetSelectedPackage() is not PackageInfo package)
+            var package = GetSelectedPackage();
+            if (package is null)
                 return;
 
             ApplyStoreAction(() => _ignored.Add(package, scope));
@@ -848,8 +841,8 @@ namespace WinGetMGui
 
         private void UnignoreSelected()
         {
-            if (dataGridViewPackages.SelectedRows.Count == 0 ||
-                dataGridViewPackages.SelectedRows[0].DataBoundItem is not IgnoredPackage entry)
+            var entry = GetSelectedIgnored();
+            if (entry is null)
                 return;
 
             ApplyStoreAction(() => _ignored.Remove(entry));
