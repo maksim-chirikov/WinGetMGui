@@ -44,6 +44,7 @@ namespace WinGetMGui
         private List<PackageInfo> _installedPackages = new();
         private List<PackageInfo> _catalogPackages = new();
         private IgnoredPackagesStore _ignored = default!;
+        private IReadOnlyList<IgnoredRow> _ignoredRows = Array.Empty<IgnoredRow>();
         private StoreSettings _settings = default!;
         private ContextMenuStrip _contextMenu = default!;
         private Panel _settingsHost = default!;
@@ -122,6 +123,9 @@ namespace WinGetMGui
             LoadAppIcon();
             _ignored = new IgnoredPackagesStore(IgnoredPackagesStore.DefaultPath);
             LoadStore(IgnoredPackagesStore.DefaultPath, () => _ignored.Load());
+            // The Ignored tab is reachable while the startup winget list is still running, so its rows must
+            // exist from the rules alone (no live installed state yet).
+            RecalcIgnored();
             _settings = new StoreSettings(StoreSettings.DefaultPath);
             LoadStore(StoreSettings.DefaultPath, () => _settings.Load());
             SuspendLayout();
@@ -402,7 +406,7 @@ namespace WinGetMGui
             null;
 
         // The selected grid row is read only through these three: each tab binds one row model
-        // (Update/Install/Uninstall -> PackageInfo, Ignored -> IgnoredPackage), so IPackageRow is
+        // (Update/Install/Uninstall -> PackageInfo, Ignored -> IgnoredRow), so IPackageRow is
         // the shape every action needs, and the tab-specific accessors narrow it without a cast.
         private IPackageRow? GetSelectedRow() =>
             dataGridViewPackages.SelectedRows.Count > 0
@@ -411,7 +415,7 @@ namespace WinGetMGui
 
         private PackageInfo? GetSelectedPackage() => GetSelectedRow() as PackageInfo;
 
-        private IgnoredPackage? GetSelectedIgnored() => GetSelectedRow() as IgnoredPackage;
+        private IgnoredRow? GetSelectedIgnored() => GetSelectedRow() as IgnoredRow;
 
         private bool IsUpdateTab => tabs.SelectedTab == _updateTab;
         private bool IsInstallTab => tabs.SelectedTab == _installTab;
@@ -484,18 +488,19 @@ namespace WinGetMGui
             statusLabel.Text = "Loading packages...";
             var packages = await wingetService.GetInstalledPackagesAsync();
             _installedPackages = packages;
-            _ignored.UpdateFromInstalled(_installedPackages);
             RecalcIgnored();
             ApplyFilter();
         }
 
-        // The Ignored flag feeds only the Update-tab filter and depends only on the ignore store plus each
-        // installed row's Id/AvailableVersion (fixed once the row is parsed). Recompute it when those change -
-        // an installed reload or an ignore/unignore - not on every search keystroke (ApplyFilter runs there).
+        // The ignore-derived state: the Ignored flag on each installed row, and the Ignored-tab rows.
+        // Both depend only on the ignore store plus each installed row's Id/AvailableVersion (fixed once the
+        // row is parsed). Recompute it when those change - the store load, an installed reload, an
+        // ignore/unignore - not on every search keystroke (ApplyFilter runs there).
         private void RecalcIgnored()
         {
             foreach (var package in _installedPackages)
                 package.Ignored = _ignored.IsIgnored(package);
+            _ignoredRows = _ignored.BuildRows(_installedPackages);
         }
 
         private void ApplyFilter()
@@ -509,7 +514,7 @@ namespace WinGetMGui
                 PackageVerb.Install => SortByName(_catalogPackages),
                 PackageVerb.Update => SortByName(_installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p))),
                 PackageVerb.Uninstall => SortByName(_installedPackages.Where(p => RowFilter.Matches(filter, p))),
-                _ => SortByName(_ignored.Entries.Where(e => RowFilter.Matches(filter, e))),
+                _ => SortByName(_ignoredRows.Where(r => RowFilter.Matches(filter, r))),
             };
 
             dataGridViewPackages.DataSource = list;
@@ -841,11 +846,11 @@ namespace WinGetMGui
 
         private void UnignoreSelected()
         {
-            var entry = GetSelectedIgnored();
-            if (entry is null)
+            var row = GetSelectedIgnored();
+            if (row is null)
                 return;
 
-            ApplyStoreAction(() => _ignored.Remove(entry));
+            ApplyStoreAction(() => _ignored.Remove(row.Rule));
         }
 
         private async void DataGridViewPackages_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
