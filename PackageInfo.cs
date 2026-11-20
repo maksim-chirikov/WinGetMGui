@@ -11,8 +11,16 @@ namespace WinGetMGui
         Update
     }
 
-    public static class PackageVerbProgress
+    public static class PackageVerbInfo
     {
+        public static string Caption(this PackageVerb verb) => verb switch
+        {
+            PackageVerb.Install => "Install",
+            PackageVerb.Uninstall => "Uninstall",
+            PackageVerb.Update => "Update",
+            _ => throw new ArgumentOutOfRangeException(nameof(verb)),
+        };
+
         public static string ProgressStatus(this PackageVerb verb) => verb switch
         {
             PackageVerb.Install => "Installing",

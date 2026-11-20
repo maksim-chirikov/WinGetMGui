@@ -196,6 +196,9 @@ namespace WinGetMGui
             _ignoredTab = new TabPage(TabInfo.Ignored.Caption);
             _settingsTab = new TabPage(TabInfo.Settings.Caption);
             tabs.TabPages.AddRange(new[] { _updateTab, _installTab, _uninstallTab, _ignoredTab, _settingsTab });
+            // State the initial mode. The first tab is the default only once the control's handle exists -
+            // until then SelectedTab reads null (SelectedIndex = -1)
+            tabs.SelectedTab = _updateTab;
             tabs.SelectedIndexChanged += Tabs_SelectedIndexChanged;
 
             // One entry per tab: caption + its F1-F4 key (the Settings tab has no key, so it has no shortcut)
@@ -397,11 +400,21 @@ namespace WinGetMGui
                 column.SortMode = DataGridViewColumnSortMode.NotSortable;
         }
 
-        private PackageVerb? GetModeVerb() =>
-            IsUpdateTab ? PackageVerb.Update :
-            IsInstallTab ? PackageVerb.Install :
-            IsUninstallTab ? PackageVerb.Uninstall :
-            null;
+        // The package action the selected tab drives. One explicit branch per tab (same shape as
+        // ApplyFilter): Ignored and Settings run no winget verb, so they return null.
+        private PackageVerb? GetModeVerb()
+        {
+            if (IsUpdateTab)
+                return PackageVerb.Update;
+            else if (IsInstallTab)
+                return PackageVerb.Install;
+            else if (IsUninstallTab)
+                return PackageVerb.Uninstall;
+            else if (IsIgnoredTab || IsSettingsTab)
+                return null;
+            else
+                throw new InvalidOperationException("No action for the selected tab");
+        }
 
         // The selected grid row is read only through these three: each tab binds one row model
         // (Update/Install/Uninstall -> PackageInfo, Ignored -> IgnoredRow), so IPackageRow is
@@ -430,7 +443,7 @@ namespace WinGetMGui
             bool rowSelected = GetSelectedRow() is not null;
             PackageVerb? verb = GetModeVerb();
 
-            btnAction.Text = IsIgnoredTab ? ActionInfo.Unignore.Caption : verb is null ? ActionInfo.NoAction.Caption : $"{verb}";
+            btnAction.Text = IsIgnoredTab ? ActionInfo.Unignore.Caption : verb?.Caption() ?? ActionInfo.NoAction.Caption;
             btnAction.ToolTipText = IsIgnoredTab ? ActionInfo.Unignore.ToolTip : string.Empty;
             btnAction.Enabled = idle && (IsIgnoredTab
                 ? GetSelectedIgnored() is not null
@@ -507,13 +520,19 @@ namespace WinGetMGui
                 return;
 
             string filter = txtSearch.Text;
-            System.Collections.IEnumerable list = GetModeVerb() switch
-            {
-                PackageVerb.Install => SortByName(_catalogPackages),
-                PackageVerb.Update => SortByName(_installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p))),
-                PackageVerb.Uninstall => SortByName(_installedPackages.Where(p => RowFilter.Matches(filter, p))),
-                _ => SortByName(_ignoredRows.Where(r => RowFilter.Matches(filter, r))),
-            };
+            // One row source per tab, stated here (same shape as GetModeVerb): every list is sorted by
+            // Name and filtered by the search text, except the Install catalog - its text was the winget query.
+            IEnumerable<IPackageRow> list;
+            if (IsUpdateTab)
+                list = SortByName(_installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p)));
+            else if (IsInstallTab)
+                list = SortByName(_catalogPackages);
+            else if (IsUninstallTab)
+                list = SortByName(_installedPackages.Where(p => RowFilter.Matches(filter, p)));
+            else if (IsIgnoredTab)
+                list = SortByName(_ignoredRows.Where(r => RowFilter.Matches(filter, r)));
+            else
+                throw new InvalidOperationException("No row source for the selected tab");
 
             dataGridViewPackages.DataSource = list;
             // Binding auto-selects row 0; drop it so a refresh never leaves an unclicked row selected
@@ -545,7 +564,7 @@ namespace WinGetMGui
             if (GetModeVerb() is not PackageVerb verb)
                 return;
 
-            _contextMenu.Items.Add(verb.ToString(), null, async (s, e) => await TryStart(verb));
+            _contextMenu.Items.Add(verb.Caption(), null, async (s, e) => await TryStart(verb));
 
             _contextMenu.Items.Add(new ToolStripSeparator());
             _contextMenu.Items.Add(ActionInfo.ShowInfo.Caption, null, async (s, e) => await ShowInfoSelected());
