@@ -68,8 +68,6 @@ namespace WinGetMGui
                 string.IsNullOrEmpty(KeyHint) ? Caption
                 : string.IsNullOrEmpty(Caption) ? KeyHint
                 : $"{Caption} ({KeyHint})";
-
-            public static implicit operator string(CaptionInfo caption) => caption.Caption;
         }
 
         private static class ActionInfo
@@ -192,11 +190,11 @@ namespace WinGetMGui
                 ItemSize = new Size(120, 28),
                 Height = 33
             };
-            _updateTab = new TabPage(TabInfo.Update);
-            _installTab = new TabPage(TabInfo.Install);
-            _uninstallTab = new TabPage(TabInfo.Uninstall);
-            _ignoredTab = new TabPage(TabInfo.Ignored);
-            _settingsTab = new TabPage(TabInfo.Settings);
+            _updateTab = new TabPage(TabInfo.Update.Caption);
+            _installTab = new TabPage(TabInfo.Install.Caption);
+            _uninstallTab = new TabPage(TabInfo.Uninstall.Caption);
+            _ignoredTab = new TabPage(TabInfo.Ignored.Caption);
+            _settingsTab = new TabPage(TabInfo.Settings.Caption);
             tabs.TabPages.AddRange(new[] { _updateTab, _installTab, _uninstallTab, _ignoredTab, _settingsTab });
             tabs.SelectedIndexChanged += Tabs_SelectedIndexChanged;
 
@@ -237,7 +235,7 @@ namespace WinGetMGui
             toolStrip.Items.Add(txtSearch);
 
             // Search Button
-            btnSearch = new ToolStripButton(ActionInfo.Search);
+            btnSearch = new ToolStripButton(ActionInfo.Search.Caption);
             btnSearch.Click += BtnSearch_Click;
             toolStrip.Items.Add(btnSearch);
 
@@ -275,19 +273,19 @@ namespace WinGetMGui
             toolStrip.Items.Add(btnAction);
 
             // ShowInfo button (label "Show"; grid tabs, selected row): winget show details in a modal window; run by grid double-click
-            btnShowInfo = new ToolStripButton(ActionInfo.ShowInfo);
+            btnShowInfo = new ToolStripButton(ActionInfo.ShowInfo.Caption);
             btnShowInfo.Click += BtnShowInfo_Click;
             toolStrip.Items.Add(btnShowInfo);
 
             // Ignore actions (Update tab only): same rules as the context menu items
-            btnIgnoreVersion = new ToolStripButton(ActionInfo.IgnoreVersion);
+            btnIgnoreVersion = new ToolStripButton(ActionInfo.IgnoreVersion.Caption);
             btnIgnoreVersion.Click += (s, e) => IgnoreSelected(IgnoreScope.Version);
-            btnIgnorePackage = new ToolStripButton(ActionInfo.IgnorePackage);
+            btnIgnorePackage = new ToolStripButton(ActionInfo.IgnorePackage.Caption);
             btnIgnorePackage.Click += (s, e) => IgnoreSelected(IgnoreScope.Package);
             toolStrip.Items.Add(btnIgnoreVersion);
             toolStrip.Items.Add(btnIgnorePackage);
 
-            btnRefresh = new ToolStripButton(ActionInfo.Refresh);
+            btnRefresh = new ToolStripButton(ActionInfo.Refresh.Caption);
             btnRefresh.ToolTipText = ActionInfo.Refresh.ToolTip;
             btnRefresh.Click += BtnRefresh_Click;
             toolStrip.Items.Add(btnRefresh);
@@ -432,7 +430,7 @@ namespace WinGetMGui
             bool rowSelected = GetSelectedRow() is not null;
             PackageVerb? verb = GetModeVerb();
 
-            btnAction.Text = IsIgnoredTab ? ActionInfo.Unignore : verb is null ? ActionInfo.NoAction : $"{verb}";
+            btnAction.Text = IsIgnoredTab ? ActionInfo.Unignore.Caption : verb is null ? ActionInfo.NoAction.Caption : $"{verb}";
             btnAction.ToolTipText = IsIgnoredTab ? ActionInfo.Unignore.ToolTip : string.Empty;
             btnAction.Enabled = idle && (IsIgnoredTab
                 ? GetSelectedIgnored() is not null
@@ -538,9 +536,9 @@ namespace WinGetMGui
 
             if (IsIgnoredTab)
             {
-                _contextMenu.Items.Add(ActionInfo.Unignore, null, (s, e) => UnignoreSelected());
+                _contextMenu.Items.Add(ActionInfo.Unignore.Caption, null, (s, e) => UnignoreSelected());
                 _contextMenu.Items.Add(new ToolStripSeparator());
-                _contextMenu.Items.Add(ActionInfo.ShowInfo, null, async (s, e) => await ShowInfoSelected());
+                _contextMenu.Items.Add(ActionInfo.ShowInfo.Caption, null, async (s, e) => await ShowInfoSelected());
                 return;
             }
 
@@ -550,17 +548,17 @@ namespace WinGetMGui
             _contextMenu.Items.Add(verb.ToString(), null, async (s, e) => await TryStart(verb));
 
             _contextMenu.Items.Add(new ToolStripSeparator());
-            _contextMenu.Items.Add(ActionInfo.ShowInfo, null, async (s, e) => await ShowInfoSelected());
+            _contextMenu.Items.Add(ActionInfo.ShowInfo.Caption, null, async (s, e) => await ShowInfoSelected());
 
             if (verb == PackageVerb.Update)
             {
                 _contextMenu.Items.Add(new ToolStripSeparator());
-                _contextMenu.Items.Add(ActionInfo.IgnoreVersion, null, (s, e) => IgnoreSelected(IgnoreScope.Version));
-                _contextMenu.Items.Add(ActionInfo.IgnorePackage, null, (s, e) => IgnoreSelected(IgnoreScope.Package));
+                _contextMenu.Items.Add(ActionInfo.IgnoreVersion.Caption, null, (s, e) => IgnoreSelected(IgnoreScope.Version));
+                _contextMenu.Items.Add(ActionInfo.IgnorePackage.Caption, null, (s, e) => IgnoreSelected(IgnoreScope.Package));
             }
 
             _contextMenu.Items.Add(new ToolStripSeparator());
-            _contextMenu.Items.Add(ActionInfo.CopyCommandLine, null, (s, e) => CopyCommandLine(verb));
+            _contextMenu.Items.Add(ActionInfo.CopyCommandLine.Caption, null, (s, e) => CopyCommandLine(verb));
         }
 
         private void ContextMenu_Opening(object? sender, System.ComponentModel.CancelEventArgs e)
