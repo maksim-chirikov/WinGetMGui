@@ -381,7 +381,7 @@ namespace WinGetMGui
             int availVersionIdx = dataGridViewPackages.Columns.Add("Available Version", "Available Version");
             dataGridViewPackages.Columns[availVersionIdx].DataPropertyName = "AvailableVersion";
 
-            int idIdx = dataGridViewPackages.Columns.Add("ID", "ID");
+            int idIdx = dataGridViewPackages.Columns.Add("Id", "Id");
             dataGridViewPackages.Columns[idIdx].DataPropertyName = "Id";
 
             int sourceIdx = dataGridViewPackages.Columns.Add("Source", "Source");
