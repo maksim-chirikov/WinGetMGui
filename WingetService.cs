@@ -232,10 +232,10 @@ namespace WinGetMGui
             return quoted.ToString();
         }
 
-        // Prepends --output-locale only where our parsing needs stable English headers (list/search); human-facing output
-        // (show, source update, visible verbs, --version) keeps the user's own language.
+        // --output-locale only where our parsing needs stable English headers (list/search), appended last after the
+        // whole argument list; human-facing output (show, source update, visible verbs, --version) keeps the user's own language.
         internal static List<string> WithOutputLocale(IReadOnlyList<string> arguments, bool supported) =>
-            supported ? [WingetFlags.OutputLocale, WingetFlags.OutputLocaleEnUs, .. arguments] : [.. arguments];
+            supported ? [.. arguments, WingetFlags.OutputLocale, WingetFlags.OutputLocaleEnUs] : [.. arguments];
 
         private static async Task<List<string>> WithOutputLocaleAsync(IReadOnlyList<string> arguments) =>
             WithOutputLocale(arguments, await SupportsOutputLocaleAsync());
