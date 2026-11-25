@@ -103,7 +103,8 @@ namespace WinGetMGui
             Changed = false;
         }
 
-        public void Add(PackageInfo package, IgnoreScope scope)
+        // Any grid row can be ignored: the rule comes from the row's columns, its AvailableVersion becoming the fixed version.
+        public void Add(IPackageRow package, IgnoreScope scope)
         {
             _entries.RemoveAll(e => IdEquals(e.Id, package.Id) && e.Scope == scope);
             _entries.Add(new IgnoredPackage
@@ -125,22 +126,14 @@ namespace WinGetMGui
             return removed > 0;
         }
 
-        // The Ignored-tab rows: one row per rule, with the live state read from the installed list.
-        // Built by MainForm.RecalcIgnored when its inputs change (store load, installed reload, ignore
-        // change), not on every search keystroke - reading rows never changes the store. Name comes from the
-        // installed list (falls back to the stored snapshot); AvailableVersion shows only a version differing
-        // from the fixed Version (trimmed, like IsIgnored) - a package no longer installed shows none.
-        public IReadOnlyList<IgnoredRow> BuildRows(IEnumerable<PackageInfo> installed)
+        // One row per rule plus the live state read through the caller's installed list; reading never changes
+        // the store. MainForm rebuilds these in RecalcIgnored, not per search keystroke (row rules in AGENTS.md).
+        public IReadOnlyList<IgnoredRow> BuildRows(InstalledPackages installed)
         {
-            // Built with the indexer so a duplicate installed Id keeps the last one instead of throwing.
-            var installedById = new Dictionary<string, PackageInfo>(StringComparer.OrdinalIgnoreCase);
-            foreach (var package in installed)
-                installedById[package.Id] = package;
-
             var rows = new List<IgnoredRow>(_entries.Count);
             foreach (var rule in _entries)
             {
-                installedById.TryGetValue(rule.Id, out var match);
+                var match = installed.Find(rule.Id);
 
                 string name = !string.IsNullOrWhiteSpace(match?.Name) ? match!.Name : rule.Name;
                 string availableVersion = match is not null && !VersionEquals(match.AvailableVersion, rule.Version)

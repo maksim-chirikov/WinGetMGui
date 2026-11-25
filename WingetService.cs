@@ -356,7 +356,9 @@ namespace WinGetMGui
             {
                 Name = GetField(table, "Name", i),
                 Id = GetField(table, "Id", i),
-                Version = GetField(table, "Version", i),
+                // winget's search Version is the one an install would use, so it goes to AvailableVersion;
+                // search output carries no installed version - the Install tab joins it (InstalledPackages.Match).
+                AvailableVersion = GetField(table, "Version", i),
                 Source = GetField(table, "Source", i)
             }).ToList();
         }

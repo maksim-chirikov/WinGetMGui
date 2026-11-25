@@ -41,7 +41,8 @@ namespace WinGetMGui
         private ToolStripMenuItem scopeUserItem = default!;
         private ToolStripMenuItem scopeMachineItem = default!;
         private Dictionary<SearchBy, ToolStripMenuItem> _searchByItems = default!;
-        private List<PackageInfo> _installedPackages = new();
+        // The installed list; its Id index serves every cross-list lookup (InstalledPackages.cs).
+        private InstalledPackages _installedPackages = InstalledPackages.Empty;
         private List<PackageInfo> _catalogPackages = new();
         private IgnoredPackagesStore _ignored = default!;
         private IReadOnlyList<IgnoredRow> _ignoredRows = Array.Empty<IgnoredRow>();
@@ -416,15 +417,13 @@ namespace WinGetMGui
                 throw new InvalidOperationException("No action for the selected tab");
         }
 
-        // The selected grid row is read only through these three: each tab binds one row model
-        // (Update/Install/Uninstall -> PackageInfo, Ignored -> IgnoredRow), so IPackageRow is
-        // the shape every action needs, and the tab-specific accessors narrow it without a cast.
+        // The selected grid row is read only through these: each tab binds one row model
+        // (Update/Uninstall -> PackageInfo, Install -> CatalogRow, Ignored -> IgnoredRow), so IPackageRow is
+        // the shape every action needs, and the Ignored accessor narrows it without a cast.
         private IPackageRow? GetSelectedRow() =>
             dataGridViewPackages.SelectedRows.Count > 0
                 ? dataGridViewPackages.SelectedRows[0].DataBoundItem as IPackageRow
                 : null;
-
-        private PackageInfo? GetSelectedPackage() => GetSelectedRow() as PackageInfo;
 
         private IgnoredRow? GetSelectedIgnored() => GetSelectedRow() as IgnoredRow;
 
@@ -447,7 +446,7 @@ namespace WinGetMGui
             btnAction.ToolTipText = IsIgnoredTab ? ActionInfo.Unignore.ToolTip : string.Empty;
             btnAction.Enabled = idle && (IsIgnoredTab
                 ? GetSelectedIgnored() is not null
-                : verb is not null && GetSelectedPackage() is not null);
+                : verb is not null && rowSelected);
 
             txtSearch.Enabled = idle;
             btnSearch.Enabled = idle && installMode;
@@ -497,8 +496,7 @@ namespace WinGetMGui
         private async Task LoadPackages()
         {
             statusLabel.Text = "Loading packages...";
-            var packages = await wingetService.GetInstalledPackagesAsync();
-            _installedPackages = packages;
+            _installedPackages = new InstalledPackages(await wingetService.GetInstalledPackagesAsync());
             RecalcIgnored();
             ApplyFilter();
         }
@@ -521,12 +519,13 @@ namespace WinGetMGui
 
             string filter = txtSearch.Text;
             // One row source per tab, stated here (same shape as GetModeVerb): every list is sorted by
-            // Name and filtered by the search text, except the Install catalog - its text was the winget query.
+            // Name and filtered by the search text, except the Install catalog - its text was the winget query,
+            // so its rows are only joined with the installed list (InstalledPackages.Match).
             IEnumerable<IPackageRow> list;
             if (IsUpdateTab)
                 list = SortByName(_installedPackages.Where(p => p.HasUpdate && !p.Ignored && RowFilter.Matches(filter, p)));
             else if (IsInstallTab)
-                list = SortByName(_catalogPackages);
+                list = SortByName(_catalogPackages.Select(_installedPackages.Match));
             else if (IsUninstallTab)
                 list = SortByName(_installedPackages.Where(p => RowFilter.Matches(filter, p)));
             else if (IsIgnoredTab)
@@ -590,7 +589,7 @@ namespace WinGetMGui
 
             e.Cancel = IsIgnoredTab
                 ? GetSelectedIgnored() is null
-                : GetSelectedPackage() is null;
+                : GetSelectedRow() is null;
         }
 
         private void ShowPackageCount()
@@ -750,29 +749,30 @@ namespace WinGetMGui
             if (_busy)
                 return;
 
-            var package = GetSelectedPackage();
-            if (package is null)
+            var row = GetSelectedRow();
+            if (row is null)
                 return;
 
-            await RunAsync(() => RunVerbAsync(verb, package));
+            await RunAsync(() => RunVerbAsync(verb, row));
         }
 
-        private async Task RunVerbAsync(PackageVerb verb, PackageInfo package)
+        // The verb needs only the row's Id: which winget action runs is the tab's, not the row's.
+        private async Task RunVerbAsync(PackageVerb verb, IPackageRow row)
         {
-            statusLabel.Text = $"{verb.ProgressStatus()} {package.Name}...";
-            await wingetService.RunPackageVerbAsync(verb, package.Id, GetSelectedScope());
+            statusLabel.Text = $"{verb.ProgressStatus()} {row.Name}...";
+            await wingetService.RunPackageVerbAsync(verb, row.Id, GetSelectedScope());
             await LoadPackages();
         }
 
         private void CopyCommandLine(PackageVerb verb)
         {
-            var package = GetSelectedPackage();
-            if (package is null)
+            var row = GetSelectedRow();
+            if (row is null)
                 return;
 
             try
             {
-                Clipboard.SetText(wingetService.BuildVerbCommandLine(verb, package.Id, GetSelectedScope()));
+                Clipboard.SetText(wingetService.BuildVerbCommandLine(verb, row.Id, GetSelectedScope()));
             }
             catch (Exception ex)
             {
@@ -854,11 +854,11 @@ namespace WinGetMGui
 
         private void IgnoreSelected(IgnoreScope scope)
         {
-            var package = GetSelectedPackage();
-            if (package is null)
+            var row = GetSelectedRow();
+            if (row is null)
                 return;
 
-            ApplyStoreAction(() => _ignored.Add(package, scope));
+            ApplyStoreAction(() => _ignored.Add(row, scope));
         }
 
         private void UnignoreSelected()

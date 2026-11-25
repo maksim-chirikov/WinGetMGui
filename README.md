@@ -11,6 +11,7 @@ WinGetMGui. Search, install, uninstall and update packages from a simple interfa
   - **Ignored** — managed ignore entries (unignore via action button or Delete)
   - **Settings** — winget behavior options: Silent, Disable interactivity, Accept source agreements, Accept package agreements, Include unknown, Wait, Force (Wait and Force off by default)
 - **Search box** filters Update/Uninstall/Ignored rows client-side, searches the catalog on Install
+- **Version columns** — `Version` is the installed version, `Available Version` is the version an install or update would use (blank when there is nothing to install/update)
 - **Refresh** (or F5) runs `winget source update` first, then reloads the current tab
 - **Ignore rules** (per package or per available version)
 - **App data** — settings and ignore rules are persisted in `%AppData%\WinGetMGui`
